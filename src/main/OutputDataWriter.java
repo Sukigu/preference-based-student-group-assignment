@@ -28,7 +28,7 @@ public class OutputDataWriter {
 	public void writeOutputData() throws IloException, IOException {
 		System.out.println();
 		writeStudentsAssignments();
-		//printGroup
+		writeGroupStats();
 	}
 	
 	public void writeStudentsAssignments() throws IloException, IOException {
@@ -54,5 +54,17 @@ public class OutputDataWriter {
 		writer.close();
 		
 		System.out.println("Assigned students: " + numAssignedStudents);
+	}
+	
+	public void writeGroupStats() throws IloException, IOException {
+		BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream("res" + File.separator + "output" + File.separator + "turmas.csv"), "utf-8"));
+		writer.write("CODIGO;SIGLA;COLOCADOS;CAPACIDADE");
+		
+		for (StudentGroup group : groups) {
+			writer.newLine();
+			writer.write(group.getCourseCode() + ";" + group.getGroupCode() + ";" + (int) cplex.getValue(group.getConstrSumAssignedStudents()) + ";" + group.getCapacity());
+		}
+		
+		writer.close();
 	}
 }
