@@ -1,6 +1,5 @@
 package main;
 import java.io.BufferedReader;
-import java.io.File;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.ArrayList;
@@ -16,31 +15,15 @@ public class InputDataReader {
 	private String groupsFilename;
 	private String preferencesFilename;
 	
-	private Map<String, StudentGroup> groups;
-	private List<Student> students;
-	
 	public InputDataReader(String groupsFilename, String preferencesFilename) throws IOException {
 		this.groupsFilename = groupsFilename;
 		this.preferencesFilename = preferencesFilename;
-		this.groups = new HashMap<String, StudentGroup>();
-		this.students = new ArrayList<Student>();
 	}
 	
-	public List<StudentGroup> getGroups() {
-		return new ArrayList<StudentGroup>(groups.values());
-	}
-	
-	public List<Student> getStudents() {
-		return students;
-	}
-	
-	public void readInputData() throws IOException {
-		readStudentGroups();
-		readStudentPreferences();
-	}
-	
-	private void readStudentGroups() throws IOException {
-		BufferedReader reader = new BufferedReader(new FileReader("res" + File.separator + "input" + File.separator + groupsFilename));
+	public Map<String, StudentGroup> readStudentGroups() throws IOException {
+		Map<String, StudentGroup> groups = new HashMap<>();
+		
+		BufferedReader reader = new BufferedReader(new FileReader(groupsFilename));
 		reader.readLine();
 		String fileLine;
 		
@@ -55,10 +38,14 @@ public class InputDataReader {
 		}
 		
 		reader.close();
+		
+		return groups;
 	}
 	
-	private void readStudentPreferences() throws IOException {
-		BufferedReader reader = new BufferedReader(new FileReader("res" + File.separator + "input" + File.separator + preferencesFilename));
+	public List<Student> readStudentPreferences(String version, Map<String, StudentGroup> groups) throws IOException {
+		List<Student> students = new ArrayList<>();
+		
+		BufferedReader reader = new BufferedReader(new FileReader(preferencesFilename));
 		reader.readLine();
 		String fileLine;
 		
@@ -78,6 +65,8 @@ public class InputDataReader {
 			}
 			
 			String[] line = fileLine.split(";");
+			
+			if (!line[0].equals(version)) continue; // Check if the process version is the one being searched
 			
 			String studentCode = line[1];
 			String studentName = line[2];
@@ -107,5 +96,7 @@ public class InputDataReader {
 		} while (true);
 		
 		reader.close();
+		
+		return students;
 	}
 }

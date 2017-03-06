@@ -1,7 +1,6 @@
 package main;
 
 import java.io.BufferedWriter;
-import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
@@ -9,6 +8,7 @@ import java.util.List;
 import java.util.Map;
 
 import ilog.concert.IloException;
+import ilog.concert.IloLinearIntExpr;
 import ilog.cplex.IloCplex;
 import model.Student;
 import model.StudentGroup;
@@ -25,14 +25,13 @@ public class OutputDataWriter {
 		this.students = students;
 	}
 	
-	public void writeOutputData() throws IloException, IOException {
-		System.out.println();
-		writeStudentsAssignments();
-		writeGroupStats();
+	public void writeOutputData(String outputPath) throws IloException, IOException {
+		writeStudentsAssignments(outputPath);
+		writeGroupStats(outputPath);
 	}
 	
-	public void writeStudentsAssignments() throws IloException, IOException {
-		BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream("res" + File.separator + "output" + File.separator + "colocações.csv"), "utf-8"));
+	private void writeStudentsAssignments(String outputPath) throws IloException, IOException {
+		BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outputPath + "colocações.csv"), "utf-8"));
 		writer.write("ESTUD_NUM_UNICO_INST;NOME;OPCAO;CODIGO;SIGLA");
 		
 		int numAssignedStudents = 0;
@@ -53,16 +52,24 @@ public class OutputDataWriter {
 		
 		writer.close();
 		
-		System.out.println("Assigned students: " + numAssignedStudents);
+		writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outputPath + "estatísticas.txt"), "utf-8"));
+		writer.write("Assigned students: " + numAssignedStudents);
+		writer.newLine();
+		writer.write("Total students: " + students.size());
+		writer.newLine();
+		writer.write("Assignment rate: " + (float) (numAssignedStudents) / students.size() * 100 + "%");
+		writer.close();
 	}
 	
-	public void writeGroupStats() throws IloException, IOException {
-		BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream("res" + File.separator + "output" + File.separator + "turmas.csv"), "utf-8"));
+	private void writeGroupStats(String outputPath) throws IloException, IOException {
+		BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outputPath + "turmas.csv"), "utf-8"));
 		writer.write("CODIGO;SIGLA;COLOCADOS;CAPACIDADE");
 		
 		for (StudentGroup group : groups) {
+			IloLinearIntExpr numStudentsAssigned = group.getConstrSumAssignedStudents();
+			
 			writer.newLine();
-			writer.write(group.getCourseCode() + ";" + group.getGroupCode() + ";" + (int) cplex.getValue(group.getConstrSumAssignedStudents()) + ";" + group.getCapacity());
+			writer.write(group.getCourseCode() + ";" + group.getGroupCode() + ";" + (numStudentsAssigned != null ? (int) cplex.getValue(numStudentsAssigned) : 0) + ";" + group.getCapacity());
 		}
 		
 		writer.close();
