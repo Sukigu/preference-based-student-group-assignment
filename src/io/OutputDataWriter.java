@@ -1,4 +1,4 @@
-package main;
+package io;
 
 import java.io.BufferedWriter;
 import java.io.FileOutputStream;
