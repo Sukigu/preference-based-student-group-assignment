@@ -11,22 +11,22 @@ import ilog.concert.IloLinearIntExpr;
 import ilog.cplex.IloCplex;
 import io.InputDataReader;
 import io.OutputDataWriter;
+import model.Group;
 import model.Student;
-import model.StudentGroup;
 import model.StudentPreference;
 
 public class AssignmentProblem {
-	private List<StudentGroup> groups;
+	private List<Group> groups;
 	private List<Student> students;
 	private String outputPath;
 	private IloCplex cplex;
 	
-	public AssignmentProblem(String groupsFilename, String preferencesFilename, String processVersion, String outputPath) throws IloException, IOException {
-		InputDataReader reader = new InputDataReader(groupsFilename, preferencesFilename);
+	public AssignmentProblem(String groupsFilename, String preferencesFilename, String procVersion, String outputPath) throws IloException, IOException {
+		InputDataReader reader = new InputDataReader(groupsFilename, scheduleFilename, preferencesFilename, gradesFilename);
 		
-		Map<String, StudentGroup> groupMap = reader.readStudentGroups();
+		Map<String, Group> groupMap = reader.readStudentGroups();
 		this.groups = new ArrayList<>(groupMap.values());
-		this.students = reader.readStudentPreferences(processVersion, groupMap);
+		this.students = reader.readStudentPreferences(procVersion, groupMap);
 		
 		this.outputPath = outputPath;
 		this.cplex = new IloCplex();
@@ -50,7 +50,7 @@ public class AssignmentProblem {
 				objective.addTerm(var_preferenceAssigned, preference.getWeight()); // Build objective function: preferenceAssigned * preferenceWeight
 				constr_sumAssignedPreferences.addTerm(1, var_preferenceAssigned); // Build constraint: sum of all preference assignments for this student
 				
-				for (StudentGroup group : preference.getCourseGroupPairs().values()) {
+				for (Group group : preference.getCourseGroupPairs().values()) {
 					group.addTermToConstrSumAssignedStudents(cplex, var_preferenceAssigned); // Build constraint: sum of all students assigned to this group
 				}
 			}
@@ -58,7 +58,7 @@ public class AssignmentProblem {
 			cplex.addLe(constr_sumAssignedPreferences, 1); // Constraint: A student can have at most 1 preference assigned
 		}
 		
-		for (StudentGroup group : groups) {
+		for (Group group : groups) {
 			cplex.addLe(group.getConstrSumAssignedStudents(), group.getCapacity()); // Constraint: The sum of assigned students must not exceed this group's capacity
 		}
 		

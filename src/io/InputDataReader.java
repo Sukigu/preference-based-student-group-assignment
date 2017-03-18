@@ -1,4 +1,5 @@
 package io;
+
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
@@ -7,21 +8,35 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import model.Course;
+import model.Group;
 import model.Student;
-import model.StudentGroup;
 import model.StudentPreference;
 
 public class InputDataReader {
 	private String groupsFilename;
+	private String scheduleFilename;
 	private String preferencesFilename;
+	private String gradesFilename;
+	private String procVersion;
 	
-	public InputDataReader(String groupsFilename, String preferencesFilename) throws IOException {
+	public InputDataReader(String groupsFilename, String scheduleFilename, String preferencesFilename, String gradesFilename, String procVersion) throws IOException {
 		this.groupsFilename = groupsFilename;
+		this.scheduleFilename = scheduleFilename;
 		this.preferencesFilename = preferencesFilename;
+		this.gradesFilename = gradesFilename;
+		this.procVersion = procVersion;
 	}
 	
-	public Map<String, StudentGroup> readStudentGroups() throws IOException {
-		Map<String, StudentGroup> groups = new HashMap<>();
+	public void readStuff() throws IOException {
+		Map<Course, Map<String, Group>> coursesGroups = readCoursesGroups();
+		List<Student> students = readStudents(coursesGroups);
+		readStudentsGrades(students);
+		//readSchedule();
+	}
+	
+	private Map<Course, Map<String, Group>> readCoursesGroups() throws IOException {
+		Map<Course, Map<String, Group>> coursesGroups = new HashMap<>();
 		
 		BufferedReader reader = new BufferedReader(new FileReader(groupsFilename));
 		reader.readLine();
@@ -34,66 +49,68 @@ public class InputDataReader {
 			String groupCode = line[1];
 			int groupCapacity = Integer.parseInt(line[2]);
 			
-			groups.put(courseCode + "_" + groupCode, new StudentGroup(courseCode, groupCode, groupCapacity));
+			Course thisCourse = new Course(courseCode);
+			coursesGroups.putIfAbsent(thisCourse, new HashMap<>());
+			coursesGroups.get(thisCourse).put(groupCode, new Group(groupCode, groupCapacity));
 		}
 		
 		reader.close();
 		
-		return groups;
+		return coursesGroups;
 	}
 	
-	public List<Student> readStudentPreferences(String version, Map<String, StudentGroup> groups) throws IOException {
+	private List<Student> readStudents( Map<Course, Map<String, Group>> coursesGroups) throws IOException {
 		List<Student> students = new ArrayList<>();
 		
 		BufferedReader reader = new BufferedReader(new FileReader(preferencesFilename));
 		reader.readLine();
 		String fileLine;
 		
-		Student currentStudent = null;
-		StudentPreference currentPreference = null;
+		Student prevStudent = null;
 		
-		do {
-			if ((fileLine = reader.readLine()) == null) {
-				if (currentStudent != null) { // If there's still a student left to add to the students list...
-					if (currentPreference != null) { // If there's still a preference left to add to this student...
-						currentStudent.addPreference(currentPreference);
-					}
-					students.add(currentStudent);
-				}
-				
-				break;
-			}
-			
+		while ((fileLine = reader.readLine()) != null) {
 			String[] line = fileLine.split(";");
 			
-			if (!line[0].equals(version)) continue; // Check if the process version is the one being searched
+			if (!line[0].equals(procVersion)) continue;
 			
 			String studentCode = line[1];
 			String studentName = line[2];
-			int order = Integer.parseInt(line[6]);
+			int preferenceOrder = Integer.parseInt(line[6]);
 			String courseCode = line[7];
 			String groupCode = line[8];
 			
-			if (currentStudent == null || !studentCode.equals(currentStudent.getCode())) { // If this is a new student...
-				if (currentStudent != null) {
-					currentStudent.addPreference(currentPreference);
-					students.add(currentStudent);
-				}
-				
-				currentStudent = new Student(studentCode, studentName);
-				currentPreference = null;
+			Student thisStudent = new Student(studentCode);
+			if (!thisStudent.equals(prevStudent)) { // If this is a new student, save the previous student
+				students.add(prevStudent);
+				thisStudent.setName(studentName);
+			}
+			else {
+				thisStudent = prevStudent; // If it isn't, retrieve the student
 			}
 			
-			if (currentPreference == null || order != currentPreference.getOrder()) { // If this is a new preference for this student...
-				if (currentPreference != null) {
-					currentStudent.addPreference(currentPreference);
-				}
-				
-				currentPreference = new StudentPreference(order);
-			}
+			StudentPreference thisPreference = new StudentPreference(preferenceOrder);
+			Map<Integer, StudentPreference> studentPreferences = thisStudent.getPreferences(); // Get this student's preferences
+			studentPreferences.putIfAbsent(preferenceOrder, thisPreference); // If this is a new preference, put it in the map
+			thisPreference = studentPreferences.get(preferenceOrder); // If it isn't, retrieve the existing preference
 			
-			currentPreference.addCourseGroupPair(courseCode, groups.get(courseCode + "_" + groupCode));
-		} while (true);
+			thisPreference.addCourseGroupPair(courseCode, coursesGroups.get(courseCode).get(groupCode));
+			
+			prevStudent = thisStudent;
+		}
+		
+		reader.close();
+		
+		return students;
+	}
+	
+	private List<Student> readStudentsGrades(List<Student> students) throws IOException {
+		BufferedReader reader = new BufferedReader(new FileReader(gradesFilename));
+		reader.readLine();
+		String fileLine;
+		
+		while ((fileLine = reader.readLine()) != null) {
+			// TODO: Read grades from file
+		}
 		
 		reader.close();
 		

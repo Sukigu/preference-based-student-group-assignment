@@ -4,16 +4,17 @@ import java.util.HashMap;
 import java.util.Map;
 
 import ilog.concert.IloIntVar;
+import model.Group;
 
 public class StudentPreference {
 	private int order;
-	private Map<String, StudentGroup> courseGroupPairs;
+	private Map<String, Group> courseGroupPairs;
 	private IloIntVar var_preferenceAssigned; // Decision variable to indicate if this preference has been assigned to the student
 	private int weight; // Importance of this specific student preference regarding all other preferences
 	
 	public StudentPreference(int order) {
 		this.order = order;
-		this.courseGroupPairs = new HashMap<String, StudentGroup>();
+		this.courseGroupPairs = new HashMap<String, Group>();
 		this.weight = 1;
 	}
 	
@@ -21,11 +22,11 @@ public class StudentPreference {
 		return order;
 	}
 	
-	public Map<String, StudentGroup> getCourseGroupPairs() {
+	public Map<String, Group> getCourseGroupPairs() {
 		return courseGroupPairs;
 	}
 	
-	public void addCourseGroupPair(String course, StudentGroup group) {
+	public void addCourseGroupPair(String course, Group group) {
 		courseGroupPairs.put(course, group);
 	}
 	
@@ -43,5 +44,15 @@ public class StudentPreference {
 	
 	public void setWeight(int weight) {
 		this.weight = weight;
+	}
+	
+	@Override
+	public boolean equals(Object obj) {
+		if (obj instanceof StudentPreference) {
+			StudentPreference otherPref = (StudentPreference) obj;
+			if (otherPref.order == order) return true;
+			else return false;
+		}
+		else return false;
 	}
 }

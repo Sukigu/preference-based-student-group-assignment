@@ -1,17 +1,18 @@
 package model;
 
-import java.util.ArrayList;
-import java.util.List;
+import java.util.HashMap;
+import java.util.Map;
 
 public class Student {
 	private String code;
 	private String name;
-	private List<StudentPreference> preferences;
+	private float avgGrade;
+	private Map<Integer, StudentPreference> preferences;
 	
-	public Student(String code, String name) {
+	public Student(String code) {
 		this.code = code;
-		this.name = name;
-		this.preferences = new ArrayList<StudentPreference>();
+		this.avgGrade = -1;
+		preferences = new HashMap<>();
 	}
 	
 	public String getCode() {
@@ -22,19 +23,27 @@ public class Student {
 		return name;
 	}
 	
-	public List<StudentPreference> getPreferences() {
-		return preferences;
+	public void setName(String name) {
+		this.name = name;
 	}
 	
-	public void addPreference(StudentPreference preference) {
-		preferences.add(preference);
+	public float getAvgGrade() {
+		return avgGrade;
+	}
+	
+	public void setAvgGrade(float avgGrade) {
+		this.avgGrade = avgGrade;
+	}
+	
+	public Map<Integer, StudentPreference> getPreferences() {
+		return preferences;
 	}
 	
 	@Override
 	public boolean equals(Object obj) {
 		if (obj instanceof Student) {
 			Student otherStudent = (Student) obj;
-			if (otherStudent.getCode().equals(code)) return true;
+			if (otherStudent.code.equals(code)) return true;
 			else return false;
 		}
 		else return false;
