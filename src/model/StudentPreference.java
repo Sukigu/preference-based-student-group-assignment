@@ -14,7 +14,7 @@ public class StudentPreference {
 	
 	public StudentPreference(int order) {
 		this.order = order;
-		this.courseGroupPairs = new HashMap<String, Group>();
+		this.courseGroupPairs = new HashMap<>();
 		this.weight = 1;
 	}
 	

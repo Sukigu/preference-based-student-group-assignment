@@ -3,10 +3,12 @@ package model;
 public class Group {
 	private String code;
 	private int capacity;
+	private int[][] schedule;
 	
 	public Group(String code, int capacity) {
 		this.code = code;
 		this.capacity = capacity;
+		this.schedule = new int[6][25];
 	}
 	
 	public String getCode() {
@@ -17,12 +19,17 @@ public class Group {
 		return capacity;
 	}
 	
+	public int[][] getSchedule() {
+		return schedule;
+	}
+	
 	@Override
 	public boolean equals(Object obj) {
-		if (obj instanceof Group) {
-			Group otherGroup = (Group) obj;
-			if (otherGroup.code.equals(code)) return true;
-			else return false;
+		if (obj instanceof String) {
+			return (String) obj == code;
+		}
+		else if (obj instanceof Group) {
+			return ((Group) obj).code.equals(code);
 		}
 		else return false;
 	}

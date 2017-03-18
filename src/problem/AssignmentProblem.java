@@ -11,23 +11,23 @@ import ilog.concert.IloLinearIntExpr;
 import ilog.cplex.IloCplex;
 import io.InputDataReader;
 import io.OutputDataWriter;
+import model.Course;
 import model.Group;
 import model.Student;
 import model.StudentPreference;
 
 public class AssignmentProblem {
-	private List<Group> groups;
-	private List<Student> students;
+	private Map<Course, Map<String, Group>> coursesGroups;
+	private Map<String, Student> students;
 	private String outputPath;
 	private IloCplex cplex;
 	
-	public AssignmentProblem(String groupsFilename, String preferencesFilename, String procVersion, String outputPath) throws IloException, IOException {
-		InputDataReader reader = new InputDataReader(groupsFilename, scheduleFilename, preferencesFilename, gradesFilename);
+	public AssignmentProblem(String groupsFilename, String scheduleFilename, String preferencesFilename, String gradesFilename, String procVersion, String outputPath) throws IloException, IOException {
+		InputDataReader reader = new InputDataReader(groupsFilename, scheduleFilename, preferencesFilename, gradesFilename, procVersion);
+		reader.readData();
 		
-		Map<String, Group> groupMap = reader.readStudentGroups();
-		this.groups = new ArrayList<>(groupMap.values());
-		this.students = reader.readStudentPreferences(procVersion, groupMap);
-		
+		this.coursesGroups = reader.getCoursesGroups();
+		this.students = reader.getStudents();
 		this.outputPath = outputPath;
 		this.cplex = new IloCplex();
 	}
@@ -40,10 +40,10 @@ public class AssignmentProblem {
 	private void createVariablesConstraintsObjective() throws IloException {
 		IloLinearIntExpr objective = cplex.linearIntExpr();
 		
-		for (Student student : students) {
+		students.forEach((code, student) -> {
 			IloLinearIntExpr constr_sumAssignedPreferences = cplex.linearIntExpr(); // Sum of all boolean variables indicating an assigned preference
 			
-			for (StudentPreference preference : student.getPreferences()) {
+			student.getPreferences().forEach((order, preference) -> {
 				IloIntVar var_preferenceAssigned = cplex.boolVar(); // 1 if student gets this preference assigned, 0 otherwise
 				
 				preference.setVarPreferenceAssigned(var_preferenceAssigned);
@@ -53,14 +53,16 @@ public class AssignmentProblem {
 				for (Group group : preference.getCourseGroupPairs().values()) {
 					group.addTermToConstrSumAssignedStudents(cplex, var_preferenceAssigned); // Build constraint: sum of all students assigned to this group
 				}
-			}
+			});
 			
 			cplex.addLe(constr_sumAssignedPreferences, 1); // Constraint: A student can have at most 1 preference assigned
-		}
+		});
 		
-		for (Group group : groups) {
-			cplex.addLe(group.getConstrSumAssignedStudents(), group.getCapacity()); // Constraint: The sum of assigned students must not exceed this group's capacity
-		}
+		coursesGroups.entrySet().forEach((entry) -> { // For each course...
+			entry.getValue().forEach((code, group) -> { // For each group in this course...
+				cplex.addLe(group.getConstrSumAssignedStudents(), group.getCapacity()); // Constraint: The sum of assigned students must not exceed this group's capacity
+			});
+		});
 		
 		// Set maximization of objective function
 		cplex.addMaximize(objective);
@@ -69,7 +71,7 @@ public class AssignmentProblem {
 	private void solve() throws IOException, IloException {
 		// Solve the problem
 		if (cplex.solve()) {
-			OutputDataWriter writer = new OutputDataWriter(cplex, groups, students);
+			OutputDataWriter writer = new OutputDataWriter(cplex, coursesGroups, students);
 			writer.writeOutputData(outputPath);
 		}
 		else {

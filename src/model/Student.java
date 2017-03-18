@@ -12,7 +12,7 @@ public class Student {
 	public Student(String code) {
 		this.code = code;
 		this.avgGrade = -1;
-		preferences = new HashMap<>();
+		this.preferences = new HashMap<>();
 	}
 	
 	public String getCode() {
@@ -41,10 +41,11 @@ public class Student {
 	
 	@Override
 	public boolean equals(Object obj) {
-		if (obj instanceof Student) {
-			Student otherStudent = (Student) obj;
-			if (otherStudent.code.equals(code)) return true;
-			else return false;
+		if (obj instanceof String) {
+			return (String) obj == code;
+		}
+		else if (obj instanceof Student) {
+			return ((Student) obj).code.equals(code);
 		}
 		else return false;
 	}

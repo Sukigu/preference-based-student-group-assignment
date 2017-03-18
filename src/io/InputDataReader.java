@@ -3,9 +3,7 @@ package io;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
 import java.util.Map;
 
 import model.Course;
@@ -14,25 +12,36 @@ import model.Student;
 import model.StudentPreference;
 
 public class InputDataReader {
-	private String groupsFilename;
-	private String scheduleFilename;
-	private String preferencesFilename;
-	private String gradesFilename;
-	private String procVersion;
+	private String scheduleFilename,
+		groupsFilename,
+		preferencesFilename,
+		gradesFilename,
+		procVersion;
 	
-	public InputDataReader(String groupsFilename, String scheduleFilename, String preferencesFilename, String gradesFilename, String procVersion) throws IOException {
-		this.groupsFilename = groupsFilename;
+	private Map<Course, Map<String, Group>> coursesGroups;
+	private Map<String, Student> students;
+	
+	public InputDataReader(String scheduleFilename, String groupsFilename, String preferencesFilename, String gradesFilename, String procVersion) throws IOException {
 		this.scheduleFilename = scheduleFilename;
+		this.groupsFilename = groupsFilename;
 		this.preferencesFilename = preferencesFilename;
 		this.gradesFilename = gradesFilename;
 		this.procVersion = procVersion;
 	}
 	
-	public void readStuff() throws IOException {
-		Map<Course, Map<String, Group>> coursesGroups = readCoursesGroups();
-		List<Student> students = readStudents(coursesGroups);
+	public void readData() throws IOException {
+		coursesGroups = readCoursesGroups();
+		students = readStudents(coursesGroups);
 		readStudentsGrades(students);
-		//readSchedule();
+		readSchedule(); // TODO: Read schedule first, reading info about courses/groups for the first time
+	}
+	
+	public Map<Course, Map<String, Group>> getCoursesGroups() {
+		return coursesGroups;
+	}
+	
+	public Map<String, Student> getStudents() {
+		return students;
 	}
 	
 	private Map<Course, Map<String, Group>> readCoursesGroups() throws IOException {
@@ -59,8 +68,8 @@ public class InputDataReader {
 		return coursesGroups;
 	}
 	
-	private List<Student> readStudents( Map<Course, Map<String, Group>> coursesGroups) throws IOException {
-		List<Student> students = new ArrayList<>();
+	private Map<String, Student> readStudents(Map<Course, Map<String, Group>> coursesGroups) throws IOException {
+		Map<String, Student> students = new HashMap<>();
 		
 		BufferedReader reader = new BufferedReader(new FileReader(preferencesFilename));
 		reader.readLine();
@@ -81,7 +90,7 @@ public class InputDataReader {
 			
 			Student thisStudent = new Student(studentCode);
 			if (!thisStudent.equals(prevStudent)) { // If this is a new student, save the previous student
-				students.add(prevStudent);
+				students.put(prevStudent.getCode(), prevStudent);
 				thisStudent.setName(studentName);
 			}
 			else {
@@ -103,17 +112,45 @@ public class InputDataReader {
 		return students;
 	}
 	
-	private List<Student> readStudentsGrades(List<Student> students) throws IOException {
+	private Map<String, Student> readStudentsGrades(Map<String, Student> students) throws IOException {
 		BufferedReader reader = new BufferedReader(new FileReader(gradesFilename));
 		reader.readLine();
 		String fileLine;
 		
 		while ((fileLine = reader.readLine()) != null) {
-			// TODO: Read grades from file
+			String[] line = fileLine.split(";");
+			
+			String studentCode = line[0];
+			float studentGrade = Float.parseFloat(line[1]);
+			
+			students.get(studentCode).setAvgGrade(studentGrade);
 		}
 		
 		reader.close();
 		
 		return students;
+	}
+	
+	private void readSchedule() throws IOException {
+		BufferedReader reader = new BufferedReader(new FileReader(scheduleFilename));
+		reader.readLine();
+		String fileLine;
+		
+		while ((fileLine = reader.readLine()) != null) {
+			String[] line = fileLine.split(";");
+			
+			String courseCode = line[1];
+			String groupCode = line[0];
+			int weekday = Integer.parseInt(line[2]) - 2;
+			int startTime = (int) ((Float.parseFloat(line[3]) - 8) * 2);
+			int duration = (int) (Float.parseFloat(line[4]) * 2);
+			
+			int[][] groupSchedule = coursesGroups.get(courseCode).get(groupCode).getSchedule();
+			for (int i = 0; i < duration; ++i) {
+				groupSchedule[weekday][startTime + i] = 1;
+			}
+		}
+		
+		reader.close();
 	}
 }

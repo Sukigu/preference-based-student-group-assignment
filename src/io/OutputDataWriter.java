@@ -10,18 +10,19 @@ import java.util.Map;
 import ilog.concert.IloException;
 import ilog.concert.IloLinearIntExpr;
 import ilog.cplex.IloCplex;
+import model.Course;
 import model.Group;
 import model.Student;
 import model.StudentPreference;
 
 public class OutputDataWriter {
 	private IloCplex cplex;
-	private List<Group> groups;
-	private List<Student> students;
+	private Map<Course, Map<String, Group>> coursesGroups;
+	private Map<String, Student> students;
 	
-	public OutputDataWriter(IloCplex cplex, List<Group> groups, List<Student> students) {
+	public OutputDataWriter(IloCplex cplex, Map<Course, Map<String, Group>> coursesGroups, Map<String, Student> students) {
 		this.cplex = cplex;
-		this.groups = groups;
+		this.coursesGroups = coursesGroups;
 		this.students = students;
 	}
 	
@@ -36,15 +37,15 @@ public class OutputDataWriter {
 		
 		int numAssignedStudents = 0;
 		
-		for (Student student : students) {
-			for (StudentPreference preference : student.getPreferences()) {
-				if (cplex.getValue(preference.getVarPreferenceAssigned()) == 1) {
+		for (Map.Entry<String, Student> studentEntry : students.entrySet()) {
+			for (Map.Entry<Integer, StudentPreference> preferenceEntry : studentEntry.getValue().getPreferences().entrySet()) {
+				if (cplex.getValue(preferenceEntry.getValue().getVarPreferenceAssigned()) == 1) {
 					++numAssignedStudents;
-					Map<String, Group> courseGroupPairs = preference.getCourseGroupPairs();
+					Map<String, Group> courseGroupPairs = preferenceEntry.getValue().getCourseGroupPairs();
 					
-					for (Group assignedGroup : courseGroupPairs.values()) {
+					for (Map.Entry<String, Group> groupEntry : courseGroupPairs.entrySet()) {
 						writer.newLine();
-						writer.write(student.getCode() + ";" + student.getName() + ";" + preference.getOrder() + ";" + assignedGroup.getCourseCode() + ";" + assignedGroup.getGroupCode());
+						writer.write(studentEntry.getValue().getCode() + ";" + studentEntry.getValue().getName() + ";" + preferenceEntry.getValue().getOrder() + ";" + groupEntry.getKey() + ";" + groupEntry.getValue().getCode());
 					}
 				}
 			}
@@ -65,12 +66,14 @@ public class OutputDataWriter {
 		BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outputPath + "turmas.csv"), "utf-8"));
 		writer.write("CODIGO;SIGLA;COLOCADOS;CAPACIDADE");
 		
-		for (Group group : groups) {
-			IloLinearIntExpr numStudentsAssigned = group.getConstrSumAssignedStudents();
-			
-			writer.newLine();
-			writer.write(group.getCourseCode() + ";" + group.getGroupCode() + ";" + (numStudentsAssigned != null ? (int) cplex.getValue(numStudentsAssigned) : 0) + ";" + group.getCapacity());
-		}
+		coursesGroups.entrySet().forEach((entry) -> {
+			entry.getValue().forEach((groupCode, group) -> {
+				IloLinearIntExpr numStudentsAssigned = group.getConstrSumAssignedStudents();
+				
+				writer.newLine();
+				writer.write(entry.getKey() + ";" + groupCode + ";" + (numStudentsAssigned != null ? (int) cplex.getValue(numStudentsAssigned) : 0) + ";" + group.getCapacity());
+			});
+		});
 		
 		writer.close();
 	}
