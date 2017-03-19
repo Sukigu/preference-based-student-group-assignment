@@ -3,12 +3,15 @@ package model;
 import java.util.HashMap;
 import java.util.Map;
 
+import ilog.concert.IloIntVar;
+
 public class Student {
 	private String code;
 	private String name;
 	private float avgGrade;
 	private Map<Integer, StudentPreference> preferences;
-	
+	private Map<String, Map<String, IloIntVar>> var_assignedToCourseGroup; // Course code -> (group code -> (boolean variable))
+																		   // When "manually" allocating students, this indicates which groups this student is assigned to
 	public Student(String code) {
 		this.code = code;
 		this.avgGrade = -1;
@@ -37,6 +40,14 @@ public class Student {
 	
 	public Map<Integer, StudentPreference> getPreferences() {
 		return preferences;
+	}
+	
+	public Map<String, Map<String, IloIntVar>> getVarAssignedToCourseGroup() {
+		return var_assignedToCourseGroup;
+	}
+	
+	public void setVarAssignedToCourseGroup(Map<String, Map<String, IloIntVar>> var_assignedToCourseGroup) {
+		this.var_assignedToCourseGroup = var_assignedToCourseGroup;
 	}
 	
 	@Override

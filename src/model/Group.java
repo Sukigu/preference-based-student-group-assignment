@@ -1,8 +1,14 @@
 package model;
 
+import ilog.concert.IloException;
+import ilog.concert.IloIntVar;
+import ilog.concert.IloLinearIntExpr;
+import ilog.cplex.IloCplex;
+
 public class Group {
 	private String code;
 	private int capacity;
+	private IloLinearIntExpr constr_sumAssignedStudents; // Sum of all decision variables indicating whether a student has been assigned to this group
 	private int[][] schedule;
 	
 	public Group(String code, int capacity) {
@@ -17,6 +23,15 @@ public class Group {
 	
 	public int getCapacity() {
 		return capacity;
+	}
+	
+	public IloLinearIntExpr getConstrSumAssignedStudents() {
+		return constr_sumAssignedStudents;
+	}
+	
+	public void addTermToConstrSumAssignedStudents(IloCplex cplex, IloIntVar var_preferenceAssigned) throws IloException {
+		if (constr_sumAssignedStudents == null) constr_sumAssignedStudents = cplex.linearIntExpr();
+		constr_sumAssignedStudents.addTerm(1, var_preferenceAssigned);
 	}
 	
 	public int[][] getSchedule() {

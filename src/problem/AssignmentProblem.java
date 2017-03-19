@@ -1,8 +1,6 @@
 package problem;
 
 import java.io.IOException;
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Map;
 
 import ilog.concert.IloException;
@@ -22,8 +20,8 @@ public class AssignmentProblem {
 	private String outputPath;
 	private IloCplex cplex;
 	
-	public AssignmentProblem(String groupsFilename, String scheduleFilename, String preferencesFilename, String gradesFilename, String procVersion, String outputPath) throws IloException, IOException {
-		InputDataReader reader = new InputDataReader(groupsFilename, scheduleFilename, preferencesFilename, gradesFilename, procVersion);
+	public AssignmentProblem(String scheduleFilename, String groupsFilename, String preferencesFilename, String gradesFilename, String procVersion, String outputPath) throws IloException, IOException {
+		InputDataReader reader = new InputDataReader(scheduleFilename, groupsFilename, preferencesFilename, gradesFilename, procVersion);
 		reader.readData();
 		
 		this.coursesGroups = reader.getCoursesGroups();
@@ -33,17 +31,17 @@ public class AssignmentProblem {
 	}
 	
 	public void run() throws IloException, IOException {
-		createVariablesConstraintsObjective();
+		defineAssignmentProblemWithPreferences();
 		solve();
 	}
 	
-	private void createVariablesConstraintsObjective() throws IloException {
+	private void defineAssignmentProblemWithPreferences() throws IloException {
 		IloLinearIntExpr objective = cplex.linearIntExpr();
 		
-		students.forEach((code, student) -> {
+		for (Student student : students.values()) {
 			IloLinearIntExpr constr_sumAssignedPreferences = cplex.linearIntExpr(); // Sum of all boolean variables indicating an assigned preference
 			
-			student.getPreferences().forEach((order, preference) -> {
+			for (StudentPreference preference : student.getPreferences().values()) {
 				IloIntVar var_preferenceAssigned = cplex.boolVar(); // 1 if student gets this preference assigned, 0 otherwise
 				
 				preference.setVarPreferenceAssigned(var_preferenceAssigned);
@@ -53,16 +51,16 @@ public class AssignmentProblem {
 				for (Group group : preference.getCourseGroupPairs().values()) {
 					group.addTermToConstrSumAssignedStudents(cplex, var_preferenceAssigned); // Build constraint: sum of all students assigned to this group
 				}
-			});
+			}
 			
 			cplex.addLe(constr_sumAssignedPreferences, 1); // Constraint: A student can have at most 1 preference assigned
-		});
+		}
 		
-		coursesGroups.entrySet().forEach((entry) -> { // For each course...
-			entry.getValue().forEach((code, group) -> { // For each group in this course...
+		for (Map<String, Group> groupMap : coursesGroups.values()) {
+			for (Group group : groupMap.values()) {
 				cplex.addLe(group.getConstrSumAssignedStudents(), group.getCapacity()); // Constraint: The sum of assigned students must not exceed this group's capacity
-			});
-		});
+			}
+		}
 		
 		// Set maximization of objective function
 		cplex.addMaximize(objective);
