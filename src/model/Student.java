@@ -42,7 +42,7 @@ public class Student {
 	@Override
 	public boolean equals(Object obj) {
 		if (obj instanceof String) {
-			return (String) obj == code;
+			return ((String) obj).equals(code);
 		}
 		else if (obj instanceof Student) {
 			return ((Student) obj).code.equals(code);
