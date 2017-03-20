@@ -4,7 +4,6 @@ import java.io.BufferedWriter;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
-import java.util.List;
 import java.util.Map;
 
 import ilog.concert.IloException;
@@ -66,14 +65,16 @@ public class OutputDataWriter {
 		BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outputPath + "turmas.csv"), "utf-8"));
 		writer.write("CODIGO;SIGLA;COLOCADOS;CAPACIDADE");
 		
-		coursesGroups.entrySet().forEach((entry) -> {
-			entry.getValue().forEach((groupCode, group) -> {
+		for (Map.Entry<Course, Map<String, Group>> coursesGroupsEntry : coursesGroups.entrySet()) {
+			String courseCode = coursesGroupsEntry.getKey().getCode();
+			
+			for (Group group : coursesGroupsEntry.getValue().values()) {
 				IloLinearIntExpr numStudentsAssigned = group.getConstrSumAssignedStudents();
 				
 				writer.newLine();
-				writer.write(entry.getKey() + ";" + groupCode + ";" + (numStudentsAssigned != null ? (int) cplex.getValue(numStudentsAssigned) : 0) + ";" + group.getCapacity());
-			});
-		});
+				writer.write(courseCode + ";" + group.getCode() + ";" + (numStudentsAssigned != null ? (int) cplex.getValue(numStudentsAssigned) : 0) + ";" + group.getCapacity());
+			}
+		}
 		
 		writer.close();
 	}

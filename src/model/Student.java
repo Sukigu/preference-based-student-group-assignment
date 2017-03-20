@@ -10,8 +10,8 @@ public class Student {
 	private String name;
 	private float avgGrade;
 	private Map<Integer, StudentPreference> preferences;
-	private Map<String, Map<String, IloIntVar>> var_assignedToCourseGroup; // Course code -> (group code -> (boolean variable))
-																		   // When "manually" allocating students, this indicates which groups this student is assigned to
+	private Map<String, Map<String, IloIntVar>> courseGroupAssignments; // Course code -> (group code -> (boolean variable))
+																		// When "manually" allocating students, this indicates which groups this student is assigned to
 	public Student(String code) {
 		this.code = code;
 		this.avgGrade = -1;
@@ -42,12 +42,12 @@ public class Student {
 		return preferences;
 	}
 	
-	public Map<String, Map<String, IloIntVar>> getVarAssignedToCourseGroup() {
-		return var_assignedToCourseGroup;
+	public Map<String, Map<String, IloIntVar>> getCourseGroupAssignments() {
+		return courseGroupAssignments;
 	}
 	
-	public void setVarAssignedToCourseGroup(Map<String, Map<String, IloIntVar>> var_assignedToCourseGroup) {
-		this.var_assignedToCourseGroup = var_assignedToCourseGroup;
+	public void setCourseGroupAssignments(Map<String, Map<String, IloIntVar>> courseGroupAssignments) {
+		this.courseGroupAssignments = courseGroupAssignments;
 	}
 	
 	@Override

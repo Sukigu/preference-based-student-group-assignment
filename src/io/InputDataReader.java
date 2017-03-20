@@ -3,7 +3,9 @@ package io;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import model.Course;
@@ -12,12 +14,8 @@ import model.Student;
 import model.StudentPreference;
 
 public class InputDataReader {
-	private String scheduleFilename,
-		groupsFilename,
-		preferencesFilename,
-		gradesFilename,
-		procVersion;
-	
+	private String scheduleFilename, groupsFilename, preferencesFilename, gradesFilename, procVersion;
+	private List<List<Map<String, List<String>>>> schedule;
 	private Map<Course, Map<String, Group>> coursesGroups;
 	private Map<String, Student> students;
 	
@@ -27,13 +25,33 @@ public class InputDataReader {
 		this.preferencesFilename = preferencesFilename;
 		this.gradesFilename = gradesFilename;
 		this.procVersion = procVersion;
+		
+		// Build schedule: list of lists (representing days and timeslots), each containing a map of courseCodes to a list of groupCodes taught in that time period
+		List<List<Map<String, List<String>>>> schedule = new ArrayList<>();
+		for (int weekday = 0; weekday < 6; ++weekday) {
+			List<Map<String, List<String>>> dayList = new ArrayList<>();
+			
+			for (int timeslot = 0; timeslot < 25; ++timeslot) {
+				Map<String, List<String>> timeslotClasses = new HashMap<>();
+				dayList.add(timeslotClasses);
+			}
+			
+			schedule.add(dayList);
+		}
+		
+		coursesGroups = new HashMap<>();
+		students = new HashMap<>();
 	}
 	
 	public void readData() throws IOException {
-		coursesGroups = readCoursesGroups();
-		students = readStudents(coursesGroups);
-		readStudentsGrades(students);
+		readCoursesGroups();
+		readStudents();
+		readStudentsGrades();
 		readSchedule(); // TODO: Read schedule first, reading info about courses/groups for the first time
+	}
+	
+	public List<List<Map<String, List<String>>>> getSchedule() {
+		return schedule;
 	}
 	
 	public Map<Course, Map<String, Group>> getCoursesGroups() {
@@ -44,9 +62,7 @@ public class InputDataReader {
 		return students;
 	}
 	
-	private Map<Course, Map<String, Group>> readCoursesGroups() throws IOException {
-		Map<Course, Map<String, Group>> coursesGroups = new HashMap<>();
-		
+	private void readCoursesGroups() throws IOException {
 		BufferedReader reader = new BufferedReader(new FileReader(groupsFilename));
 		reader.readLine();
 		String fileLine;
@@ -64,11 +80,9 @@ public class InputDataReader {
 		}
 		
 		reader.close();
-		
-		return coursesGroups;
 	}
 	
-	private Map<String, Student> readStudents(Map<Course, Map<String, Group>> coursesGroups) throws IOException {
+	private void readStudents() throws IOException {
 		Map<String, Student> students = new HashMap<>();
 		
 		BufferedReader reader = new BufferedReader(new FileReader(preferencesFilename));
@@ -108,11 +122,9 @@ public class InputDataReader {
 		}
 		
 		reader.close();
-		
-		return students;
 	}
 	
-	private Map<String, Student> readStudentsGrades(Map<String, Student> students) throws IOException {
+	private void readStudentsGrades() throws IOException {
 		BufferedReader reader = new BufferedReader(new FileReader(gradesFilename));
 		reader.readLine();
 		String fileLine;
@@ -127,8 +139,6 @@ public class InputDataReader {
 		}
 		
 		reader.close();
-		
-		return students;
 	}
 	
 	private void readSchedule() throws IOException {
@@ -145,10 +155,20 @@ public class InputDataReader {
 			int startTime = (int) ((Float.parseFloat(line[3]) - 8) * 2);
 			int duration = (int) (Float.parseFloat(line[4]) * 2);
 			
-			int[][] groupSchedule = coursesGroups.get(courseCode).get(groupCode).getSchedule();
+			if (groupCode.startsWith("COMP_")) continue; // TODO: Change
+			
+			for (int i = 0; i < duration; ++i) {
+				Map<String, List<String>> timeslotClassesMap = schedule.get(weekday).get(startTime + i);
+				List<String> timeslotGroups = timeslotClassesMap.get(courseCode);
+				if (timeslotGroups == null) timeslotGroups = new ArrayList<>();
+				timeslotGroups.add(groupCode);
+				timeslotClassesMap.put(courseCode, timeslotGroups);
+			}
+			
+			/*int[][] groupSchedule = coursesGroups.get(courseCode).get(groupCode).getSchedule();
 			for (int i = 0; i < duration; ++i) {
 				groupSchedule[weekday][startTime + i] = 1;
-			}
+			}*/
 		}
 		
 		reader.close();
