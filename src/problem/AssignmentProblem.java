@@ -35,8 +35,8 @@ public class AssignmentProblem {
 	}
 	
 	public void run() throws IloException, IOException {
-		//defineAssignmentProblemWithPreferences();
-		defineManualAssignmentProblem();
+		defineAssignmentProblemWithPreferences();
+		//defineManualAssignmentProblem();
 		solve();
 	}
 	

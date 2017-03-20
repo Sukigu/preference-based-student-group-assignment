@@ -49,9 +49,7 @@ public class StudentPreference {
 	@Override
 	public boolean equals(Object obj) {
 		if (obj instanceof StudentPreference) {
-			StudentPreference otherPref = (StudentPreference) obj;
-			if (otherPref.order == order) return true;
-			else return false;
+			return ((StudentPreference) obj).order == order;
 		}
 		else return false;
 	}

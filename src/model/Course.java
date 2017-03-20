@@ -13,10 +13,7 @@ public class Course {
 	
 	@Override
 	public boolean equals(Object obj) {
-		if (obj instanceof String) {
-			return ((String) obj).equals(code);
-		}
-		else if (obj instanceof Course) {
+		if (obj instanceof Course) {
 			return ((Course) obj).code.equals(code);
 		}
 		else return false;

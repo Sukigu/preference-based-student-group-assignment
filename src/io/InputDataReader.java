@@ -27,7 +27,7 @@ public class InputDataReader {
 		this.procVersion = procVersion;
 		
 		// Build schedule: list of lists (representing days and timeslots), each containing a map of courseCodes to a list of groupCodes taught in that time period
-		List<List<Map<String, List<String>>>> schedule = new ArrayList<>();
+		schedule = new ArrayList<>();
 		for (int weekday = 0; weekday < 6; ++weekday) {
 			List<Map<String, List<String>>> dayList = new ArrayList<>();
 			
@@ -83,8 +83,6 @@ public class InputDataReader {
 	}
 	
 	private void readStudents() throws IOException {
-		Map<String, Student> students = new HashMap<>();
-		
 		BufferedReader reader = new BufferedReader(new FileReader(preferencesFilename));
 		reader.readLine();
 		String fileLine;
@@ -94,8 +92,6 @@ public class InputDataReader {
 		while ((fileLine = reader.readLine()) != null) {
 			String[] line = fileLine.split(";");
 			
-			if (!line[0].equals(procVersion)) continue;
-			
 			String studentCode = line[1];
 			String studentName = line[2];
 			int preferenceOrder = Integer.parseInt(line[6]);
@@ -103,20 +99,22 @@ public class InputDataReader {
 			String groupCode = line[8];
 			
 			Student thisStudent = new Student(studentCode);
-			if (!thisStudent.equals(prevStudent)) { // If this is a new student, save the previous student
-				students.put(prevStudent.getCode(), prevStudent);
+			if (!thisStudent.equals(prevStudent)) { // If this is a new student...
+				if (prevStudent != null) students.put(prevStudent.getCode(), prevStudent); // Save the previous student
 				thisStudent.setName(studentName);
 			}
 			else {
 				thisStudent = prevStudent; // If it isn't, retrieve the student
 			}
 			
+			if (!line[0].equals(procVersion)) continue;
+			
 			StudentPreference thisPreference = new StudentPreference(preferenceOrder);
 			Map<Integer, StudentPreference> studentPreferences = thisStudent.getPreferences(); // Get this student's preferences
 			studentPreferences.putIfAbsent(preferenceOrder, thisPreference); // If this is a new preference, put it in the map
 			thisPreference = studentPreferences.get(preferenceOrder); // If it isn't, retrieve the existing preference
 			
-			thisPreference.addCourseGroupPair(courseCode, coursesGroups.get(courseCode).get(groupCode));
+			thisPreference.addCourseGroupPair(courseCode, coursesGroups.get(new Course(courseCode)).get(groupCode));
 			
 			prevStudent = thisStudent;
 		}
@@ -133,9 +131,12 @@ public class InputDataReader {
 			String[] line = fileLine.split(";");
 			
 			String studentCode = line[0];
-			float studentGrade = Float.parseFloat(line[1]);
+			float studentGrade = line.length == 2 ? Float.parseFloat(line[1]) : 0; // Some students have missing grade information
 			
-			students.get(studentCode).setAvgGrade(studentGrade);
+			Student thisStudent = students.get(new Student(studentCode));
+			if (thisStudent != null) { // If the student isn't found, it means they're not being assigned to groups in this process version
+				thisStudent.setAvgGrade(studentGrade);
+			}
 		}
 		
 		reader.close();
@@ -165,7 +166,7 @@ public class InputDataReader {
 				timeslotClassesMap.put(courseCode, timeslotGroups);
 			}
 			
-			/*int[][] groupSchedule = coursesGroups.get(courseCode).get(groupCode).getSchedule();
+			/*int[][] groupSchedule = coursesGroups.get(new Course(courseCode)).get(groupCode).getSchedule();
 			for (int i = 0; i < duration; ++i) {
 				groupSchedule[weekday][startTime + i] = 1;
 			}*/
