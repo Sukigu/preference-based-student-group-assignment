@@ -68,7 +68,7 @@ public class InputDataReader {
 		String fileLine;
 		
 		while ((fileLine = reader.readLine()) != null) {
-			String[] line = fileLine.split(";");
+			String[] line = fileLine.replace(" ", "").split(";");
 			
 			String courseCode = line[0];
 			String groupCode = line[1];
@@ -128,7 +128,7 @@ public class InputDataReader {
 		String fileLine;
 		
 		while ((fileLine = reader.readLine()) != null) {
-			String[] line = fileLine.split(";");
+			String[] line = fileLine.replace(" ", "").split(";");
 			
 			String studentCode = line[0];
 			float studentGrade = line.length == 2 ? Float.parseFloat(line[1]) : 0; // Some students have missing grade information
@@ -148,7 +148,7 @@ public class InputDataReader {
 		String fileLine;
 		
 		while ((fileLine = reader.readLine()) != null) {
-			String[] line = fileLine.split(";");
+			String[] line = fileLine.replace(" ", "").split(";");
 			
 			String courseCode = line[1];
 			String groupCode = line[0];

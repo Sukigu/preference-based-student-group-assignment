@@ -35,8 +35,8 @@ public class AssignmentProblem {
 	}
 	
 	public void run() throws IloException, IOException {
-		defineAssignmentProblemWithPreferences();
-		//defineManualAssignmentProblem();
+		//defineAssignmentProblemWithPreferences();
+		defineManualAssignmentProblem();
 		solve();
 	}
 	
@@ -77,7 +77,7 @@ public class AssignmentProblem {
 		for (Student student : students.values()) { // For each student...
 			Map<String, Map<String, IloIntVar>> courseGroupAssignments = new HashMap<>();
 			
-			for (Map.Entry<Course, Map<String, Group>> courseEntry : coursesGroups.entrySet()) { // For each course...
+			for (Map.Entry<Course, Map<String, Group>> courseEntry : coursesGroups.entrySet()) { // For each course... TODO: Only iterate over the courses the student is enrolled in
 				Map<String, IloIntVar> groupAssignments = new HashMap<>();
 				IloLinearIntExpr constr_maxOneGroupPerCourse = cplex.linearIntExpr(); // Sum of all group assignments for this course for this student
 				
@@ -112,7 +112,8 @@ public class AssignmentProblem {
 						List<String> groupCodes = timeslotCourse.getValue(); // Get the codes of all taught groups
 						
 						for (String groupCode : groupCodes) { // For each group of this course taught in this timeslot...
-							constr_maxOneGroupPerTimeslot.addTerm(1, courseGroupAssignments.get(courseCode).get(groupCode));
+							IloIntVar temp = courseGroupAssignments.get(courseCode).get(groupCode);
+							constr_maxOneGroupPerTimeslot.addTerm(1, temp);
 						}
 					}
 					
@@ -134,7 +135,7 @@ public class AssignmentProblem {
 		// Solve the problem
 		if (cplex.solve()) {
 			OutputDataWriter writer = new OutputDataWriter(cplex, coursesGroups, students);
-			writer.writeOutputData(outputPath);
+			//writer.writeOutputData(outputPath);
 		}
 		else {
 			System.out.println("Failed to solve problem.");
