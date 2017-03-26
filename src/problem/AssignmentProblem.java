@@ -20,16 +20,18 @@ public class AssignmentProblem {
 	private List<List<Map<String, List<String>>>> schedule;
 	private Map<Course, Map<String, Group>> coursesGroups;
 	private Map<String, Student> students;
+	private boolean isMandatoryAssignment;
 	private String outputPath;
 	private IloCplex cplex;
 	
-	public AssignmentProblem(String scheduleFilename, String groupsFilename, String preferencesFilename, String gradesFilename, String procVersion, String outputPath) throws IloException, IOException {
-		InputDataReader reader = new InputDataReader(scheduleFilename, groupsFilename, preferencesFilename, gradesFilename, procVersion);
+	public AssignmentProblem(String groupsFilename, String groupCompositesFilename, String preferencesFilename, String gradesFilename, String procVersion, boolean isMandatoryAssignment, String outputPath) throws IloException, IOException {
+		InputDataReader reader = new InputDataReader(groupsFilename, groupCompositesFilename, preferencesFilename, gradesFilename, procVersion);
 		reader.readData();
 		
 		this.schedule = reader.getSchedule();
 		this.coursesGroups = reader.getCoursesGroups();
 		this.students = reader.getStudents();
+		this.isMandatoryAssignment = isMandatoryAssignment;
 		this.outputPath = outputPath;
 		this.cplex = new IloCplex();
 	}
@@ -61,9 +63,12 @@ public class AssignmentProblem {
 			cplex.addLe(constr_sumAssignedPreferences, 1); // Constraint: a student can have at most 1 preference assigned
 		}
 		
-		for (Map<String, Group> groupMap : coursesGroups.values()) {
-			for (Group group : groupMap.values()) {
-				cplex.addLe(group.getConstrSumAssignedStudents(), group.getCapacity()); // Constraint: the sum of assigned students must not exceed this group's capacity
+		for (Map.Entry<Course, Map<String, Group>> courseEntry : coursesGroups.entrySet()) {
+			for (Group group : courseEntry.getValue().values()) {
+				if (!isMandatoryAssignment || courseEntry.getKey().getMandatory()) {
+					cplex.addLe(group.getConstrSumAssignedStudents(), group.getCapacity()); // CONSTRAINT: the sum of assigned students must not exceed this group's capacity
+				}
+				// Else (if we're assigning mandatory courses but this course is optional), don't add a constraint for the group capacity, since we know for sure everyone fits  
 			}
 		}
 		
@@ -122,9 +127,12 @@ public class AssignmentProblem {
 			}
 		}
 		
-		for (Map<String, Group> groupMap : coursesGroups.values()) {
-			for (Group group : groupMap.values()) {
-				cplex.addLe(group.getConstrSumAssignedStudents(), group.getCapacity()); // CONSTRAINT: the sum of assigned students must not exceed this group's capacity
+		for (Map.Entry<Course, Map<String, Group>> courseEntry : coursesGroups.entrySet()) {
+			for (Group group : courseEntry.getValue().values()) {
+				if (!isMandatoryAssignment || courseEntry.getKey().getMandatory()) {
+					cplex.addLe(group.getConstrSumAssignedStudents(), group.getCapacity()); // CONSTRAINT: the sum of assigned students must not exceed this group's capacity
+				}
+				// Else (if we're assigning mandatory courses but this course is optional), don't add a constraint for the group capacity, since we know for sure everyone fits  
 			}
 		}
 		

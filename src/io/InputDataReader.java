@@ -14,14 +14,14 @@ import model.Student;
 import model.StudentPreference;
 
 public class InputDataReader {
-	private String scheduleFilename, groupsFilename, preferencesFilename, gradesFilename, procVersion;
+	private String groupsFilename, groupCompositesFilename, preferencesFilename, gradesFilename, procVersion;
 	private List<List<Map<String, List<String>>>> schedule;
 	private Map<Course, Map<String, Group>> coursesGroups;
 	private Map<String, Student> students;
 	
-	public InputDataReader(String scheduleFilename, String groupsFilename, String preferencesFilename, String gradesFilename, String procVersion) throws IOException {
-		this.scheduleFilename = scheduleFilename;
+	public InputDataReader(String groupsFilename, String groupCompositesFilename, String preferencesFilename, String gradesFilename, String procVersion) throws IOException {
 		this.groupsFilename = groupsFilename;
+		this.groupCompositesFilename = groupCompositesFilename;
 		this.preferencesFilename = preferencesFilename;
 		this.gradesFilename = gradesFilename;
 		this.procVersion = procVersion;
@@ -44,10 +44,9 @@ public class InputDataReader {
 	}
 	
 	public void readData() throws IOException {
-		readCoursesGroups();
+		readSchedule();
 		readStudents();
 		readStudentsGrades();
-		readSchedule(); // TODO: Read schedule first, reading info about courses/groups for the first time
 	}
 	
 	public List<List<Map<String, List<String>>>> getSchedule() {
@@ -62,7 +61,9 @@ public class InputDataReader {
 		return students;
 	}
 	
-	private void readCoursesGroups() throws IOException {
+	private void readSchedule() throws IOException {
+		Map<String, List<String>> groupComposites = readGroupComposites();
+		
 		BufferedReader reader = new BufferedReader(new FileReader(groupsFilename));
 		reader.readLine();
 		String fileLine;
@@ -70,16 +71,71 @@ public class InputDataReader {
 		while ((fileLine = reader.readLine()) != null) {
 			String[] line = fileLine.replace(" ", "").split(";");
 			
-			String courseCode = line[0];
-			String groupCode = line[1];
-			int groupCapacity = Integer.parseInt(line[2]);
+			String courseCode = line[1];
+			String groupCode = line[0];
+			int weekday = Integer.parseInt(line[2]) - 2;
+			int startTime = (int) ((Float.parseFloat(line[3]) - 8) * 2);
+			int duration = (int) (Float.parseFloat(line[4]) * 2);
+			int groupCapacity = Integer.parseInt(line[5]);
+			boolean mandatory = (Integer.parseInt(line[6]) == 0) ? true : false;
 			
-			Course thisCourse = new Course(courseCode);
-			coursesGroups.putIfAbsent(thisCourse, new HashMap<>());
-			coursesGroups.get(thisCourse).put(groupCode, new Group(groupCode, groupCapacity));
+			if (!groupCode.startsWith("COMP_")) { // If it's not a group composite, add this group alone to the schedule
+				Course thisCourse = new Course(courseCode, mandatory);
+				coursesGroups.putIfAbsent(thisCourse, new HashMap<>());
+				coursesGroups.get(thisCourse).put(groupCode, new Group(groupCode, groupCapacity));
+				
+				for (int i = 0; i < duration; ++i) {
+					Map<String, List<String>> timeslotClassesMap = schedule.get(weekday).get(startTime + i);
+					List<String> timeslotGroups = timeslotClassesMap.get(courseCode);
+					if (timeslotGroups == null) timeslotGroups = new ArrayList<>();
+					timeslotGroups.add(groupCode);
+					timeslotClassesMap.put(courseCode, timeslotGroups);
+				}
+			} else { // If it is a composite, get all groups associated with it and add them all to the schedule
+				List<String> groupsAssociatedWithComposite = groupComposites.get(groupCode);
+				
+				for (int i = 0; i < duration; ++i) {
+					Map<String, List<String>> timeslotClassesMap = schedule.get(weekday).get(startTime + i);
+					List<String> timeslotGroups = timeslotClassesMap.get(courseCode);
+					if (timeslotGroups == null) timeslotGroups = new ArrayList<>();
+					for (String group : groupsAssociatedWithComposite) {
+						timeslotGroups.add(group);
+					}
+					timeslotClassesMap.put(courseCode, timeslotGroups);
+				}
+			}
 		}
 		
 		reader.close();
+	}
+	
+	private Map<String, List<String>> readGroupComposites() throws IOException {
+		Map<String, List<String>> groupComposites = new HashMap<>();
+		
+		BufferedReader reader = new BufferedReader(new FileReader(groupCompositesFilename));
+		reader.readLine();
+		String fileLine;
+		
+		while ((fileLine = reader.readLine()) != null) {
+			String[] line = fileLine.replace(" ", "").split(";");
+			
+			String compositeName = line[0];
+			List<String> groupCodes = new ArrayList<>();
+			
+			for (int i = 1; true; ++i) {
+				String groupCode = line[i];
+				
+				if (groupCode.equals("")) break;
+				
+				groupCodes.add(groupCode);
+			}
+			
+			groupComposites.put(compositeName, groupCodes);
+		}
+		
+		reader.close();
+		
+		return groupComposites;
 	}
 	
 	private void readStudents() throws IOException {
@@ -114,7 +170,9 @@ public class InputDataReader {
 			studentPreferences.putIfAbsent(preferenceOrder, thisPreference); // If this is a new preference, put it in the map
 			thisPreference = studentPreferences.get(preferenceOrder); // If it isn't, retrieve the existing preference
 			
-			thisPreference.addCourseGroupPair(courseCode, coursesGroups.get(new Course(courseCode)).get(groupCode));
+			thisPreference.addCourseGroupPair(courseCode, coursesGroups.get(new Course(courseCode, false)).get(groupCode));
+			
+			// TODO: ADD ENROLLED COURSES TO THIS STUDENT
 			
 			prevStudent = thisStudent;
 		}
@@ -137,39 +195,6 @@ public class InputDataReader {
 			if (thisStudent != null) { // If the student isn't found, it means they're not being assigned to groups in this process version
 				thisStudent.setAvgGrade(studentGrade);
 			}
-		}
-		
-		reader.close();
-	}
-	
-	private void readSchedule() throws IOException {
-		BufferedReader reader = new BufferedReader(new FileReader(scheduleFilename));
-		reader.readLine();
-		String fileLine;
-		
-		while ((fileLine = reader.readLine()) != null) {
-			String[] line = fileLine.replace(" ", "").split(";");
-			
-			String courseCode = line[1];
-			String groupCode = line[0];
-			int weekday = Integer.parseInt(line[2]) - 2;
-			int startTime = (int) ((Float.parseFloat(line[3]) - 8) * 2);
-			int duration = (int) (Float.parseFloat(line[4]) * 2);
-			
-			if (groupCode.startsWith("COMP_")) continue; // TODO: Change
-			
-			for (int i = 0; i < duration; ++i) {
-				Map<String, List<String>> timeslotClassesMap = schedule.get(weekday).get(startTime + i);
-				List<String> timeslotGroups = timeslotClassesMap.get(courseCode);
-				if (timeslotGroups == null) timeslotGroups = new ArrayList<>();
-				timeslotGroups.add(groupCode);
-				timeslotClassesMap.put(courseCode, timeslotGroups);
-			}
-			
-			/*int[][] groupSchedule = coursesGroups.get(new Course(courseCode)).get(groupCode).getSchedule();
-			for (int i = 0; i < duration; ++i) {
-				groupSchedule[weekday][startTime + i] = 1;
-			}*/
 		}
 		
 		reader.close();

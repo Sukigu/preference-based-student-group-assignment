@@ -1,6 +1,7 @@
 package model;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 import ilog.concert.IloIntVar;
@@ -9,7 +10,8 @@ public class Student {
 	private String code;
 	private String name;
 	private float avgGrade;
-	private Map<Integer, StudentPreference> preferences;
+	private Map<Integer, StudentPreference> preferences; // Order -> preference
+	private List<String> enrolledCourses; // List of the (mandatory) courses this student is enrolling in
 	private Map<String, Map<String, IloIntVar>> courseGroupAssignments; // Course code -> (group code -> (boolean variable))
 																		// When "manually" allocating students, this indicates which groups this student is assigned to
 	public Student(String code) {
@@ -40,6 +42,10 @@ public class Student {
 	
 	public Map<Integer, StudentPreference> getPreferences() {
 		return preferences;
+	}
+	
+	public List<String> getEnrolledCourses() {
+		return enrolledCourses;
 	}
 	
 	public Map<String, Map<String, IloIntVar>> getCourseGroupAssignments() {
