@@ -7,6 +7,7 @@ import java.io.OutputStreamWriter;
 import java.util.Map;
 
 import ilog.concert.IloException;
+import ilog.concert.IloIntVar;
 import ilog.concert.IloLinearIntExpr;
 import ilog.cplex.IloCplex;
 import model.Course;
@@ -18,19 +19,52 @@ public class OutputDataWriter {
 	private IloCplex cplex;
 	private Map<Course, Map<String, Group>> coursesGroups;
 	private Map<String, Student> students;
+	private String outputPath;
 	
-	public OutputDataWriter(IloCplex cplex, Map<Course, Map<String, Group>> coursesGroups, Map<String, Student> students) {
+	public OutputDataWriter(IloCplex cplex, Map<Course, Map<String, Group>> coursesGroups, Map<String, Student> students, String outputPath) {
 		this.cplex = cplex;
 		this.coursesGroups = coursesGroups;
 		this.students = students;
+		this.outputPath = outputPath;
 	}
 	
-	public void writeOutputData(String outputPath) throws IloException, IOException {
-		writeStudentsAssignments(outputPath);
-		writeGroupStats(outputPath);
+	public void writeOutputData() throws IloException, IOException {
+		//writeStudentsAssignments();
+		writeStudentsManualAssignments();
+		writeGroupStats();
 	}
 	
-	private void writeStudentsAssignments(String outputPath) throws IloException, IOException {
+	private void writeStudentsManualAssignments() throws IloException, IOException {
+		BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outputPath + "colocações.csv"), "utf-8"));
+		writer.write("ESTUD_NUM_UNICO_INST;NOME;OPCAO;CODIGO;SIGLA");
+		
+		int courseEnrollments = 0, courseAssignments = 0;
+		
+		for (Student student : students.values()) {
+			for (Map.Entry<String, Map<String, IloIntVar>> courseEntry : student.getCourseGroupAssignments().entrySet()) {
+				++courseEnrollments;
+				String courseCode = courseEntry.getKey();
+				
+				for (Map.Entry<String, IloIntVar> groupEntry : courseEntry.getValue().entrySet()) {
+					IloIntVar assignmentVar = groupEntry.getValue();
+					
+					if (cplex.getValue(assignmentVar) == 1) {
+						++courseAssignments;
+						String groupCode = groupEntry.getKey();
+						
+						writer.newLine();
+						writer.write(student.getCode() + ";" + student.getName() + ";" + "-1" + ";" + courseCode + ";" + groupCode);
+					}
+				}
+			}
+		}
+		
+		writer.close();
+		
+		writeAssignmentStats(courseEnrollments, courseAssignments);
+	}
+	
+	private void writeStudentsAssignments() throws IloException, IOException {
 		BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outputPath + "colocações.csv"), "utf-8"));
 		writer.write("ESTUD_NUM_UNICO_INST;NOME;OPCAO;CODIGO;SIGLA");
 		
@@ -61,9 +95,21 @@ public class OutputDataWriter {
 		writer.close();
 	}
 	
-	private void writeGroupStats(String outputPath) throws IloException, IOException {
+	private void writeAssignmentStats(int courseEnrollments, int courseAssignments) throws IOException {
+		BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outputPath + "estatísticas.txt"), "utf-8"));
+		
+		writer.write("Inscrições em UCs: " + courseEnrollments);
+		writer.newLine();
+		writer.write("Colocações em UCs: " + courseAssignments);
+		writer.newLine();
+		writer.write("Percentagem de colocações: " + (float) courseAssignments / courseEnrollments * 100 + "%");
+		
+		writer.close();
+	}
+	
+	private void writeGroupStats() throws IloException, IOException {
 		BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outputPath + "turmas.csv"), "utf-8"));
-		writer.write("CODIGO;SIGLA;COLOCADOS;CAPACIDADE");
+		writer.write("UC;TURMA;COLOCADOS;CAPACIDADE");
 		
 		for (Map.Entry<Course, Map<String, Group>> coursesGroupsEntry : coursesGroups.entrySet()) {
 			String courseCode = coursesGroupsEntry.getKey().getCode();

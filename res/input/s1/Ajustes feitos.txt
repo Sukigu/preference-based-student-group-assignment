@@ -1,0 +1,3 @@
+COMP_1069 (PDIS) não é considerado um composto, visto que as turmas individuais não possuem horário. As escolhas dos alunos foram alteradas das turmas individuais para COMP_1069.
+
+Foram removidas as escolhas de um aluno de mobilidade que se inscreveu em Projeto FEUP, porque esta UC também não existe nos dados de horários.

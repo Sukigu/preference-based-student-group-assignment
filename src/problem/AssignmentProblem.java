@@ -82,27 +82,29 @@ public class AssignmentProblem {
 		for (Student student : students.values()) { // For each student...
 			Map<String, Map<String, IloIntVar>> courseGroupAssignments = new HashMap<>();
 			
-			for (Map.Entry<Course, Map<String, Group>> courseEntry : coursesGroups.entrySet()) { // For each course... TODO: Only iterate over the courses the student is enrolled in
-				Map<String, IloIntVar> groupAssignments = new HashMap<>();
-				IloLinearIntExpr constr_maxOneGroupPerCourse = cplex.linearIntExpr(); // Sum of all group assignments for this course for this student
-				
-				for (Map.Entry<String, Group> groupEntry : courseEntry.getValue().entrySet()) { // For each group...
-					IloIntVar var_assignedToGroup = cplex.boolVar(); // VARIABLE: this student is assigned to this group for this course
+			for (Map.Entry<Course, Map<String, Group>> courseEntry : coursesGroups.entrySet()) { // For each course...
+				if (student.getEnrolledCourses().contains(courseEntry.getKey().getCode())) { // If this student is enrolled in it...
+					Map<String, IloIntVar> groupAssignments = new HashMap<>();
+					IloLinearIntExpr constr_maxOneGroupPerCourse = cplex.linearIntExpr(); // Sum of all group assignments for this course for this student
 					
-					// Paper constraint 1 (modified to allow partial assignments)
-					constr_maxOneGroupPerCourse.addTerm(1, var_assignedToGroup);
+					for (Map.Entry<String, Group> groupEntry : courseEntry.getValue().entrySet()) { // For each group...
+						IloIntVar var_assignedToGroup = cplex.boolVar(); // VARIABLE: this student is assigned to this group for this course
+						
+						// Paper constraint 1 (modified to allow partial assignments)
+						constr_maxOneGroupPerCourse.addTerm(1, var_assignedToGroup);
+						
+						// Paper constraint 3
+						groupEntry.getValue().addTermToConstrSumAssignedStudents(cplex, var_assignedToGroup);
+						
+						// Objective function
+						obj_maximizeAssignments.addTerm(1, var_assignedToGroup);
+						
+						groupAssignments.put(groupEntry.getKey(), var_assignedToGroup); 
+					}
 					
-					// Paper constraint 3
-					groupEntry.getValue().addTermToConstrSumAssignedStudents(cplex, var_assignedToGroup);
-					
-					// Objective function
-					obj_maximizeAssignments.addTerm(1, var_assignedToGroup);
-					
-					groupAssignments.put(groupEntry.getKey(), var_assignedToGroup); 
+					cplex.addLe(constr_maxOneGroupPerCourse, 1); // CONSTRAINT: a student can be assigned to at most 1 group per course
+					courseGroupAssignments.put(courseEntry.getKey().getCode(), groupAssignments);
 				}
-				
-				cplex.addLe(constr_maxOneGroupPerCourse, 1); // CONSTRAINT: a student can be assigned to at most 1 group per course
-				courseGroupAssignments.put(courseEntry.getKey().getCode(), groupAssignments);
 			}
 			
 			student.setCourseGroupAssignments(courseGroupAssignments);
@@ -113,12 +115,14 @@ public class AssignmentProblem {
 					IloLinearIntExpr constr_maxOneGroupPerTimeslot = cplex.linearIntExpr(); // Sum of all group assignments for this timeslot for this student
 					
 					for (Map.Entry<String, List<String>> timeslotCourse : timeslot.entrySet()) { // For each course taught in this timeslot...
-						String courseCode = timeslotCourse.getKey(); // Get the course code
-						List<String> groupCodes = timeslotCourse.getValue(); // Get the codes of all taught groups
-						
-						for (String groupCode : groupCodes) { // For each group of this course taught in this timeslot...
-							IloIntVar temp = courseGroupAssignments.get(courseCode).get(groupCode);
-							constr_maxOneGroupPerTimeslot.addTerm(1, temp);
+						if (student.getEnrolledCourses().contains(timeslotCourse.getKey())) { // If this student is enrolled in it...
+							String courseCode = timeslotCourse.getKey(); // Get the course code
+							List<String> groupCodes = timeslotCourse.getValue(); // Get the codes of all taught groups
+							
+							for (String groupCode : groupCodes) { // For each group of this course taught in this timeslot...
+								IloIntVar temp = courseGroupAssignments.get(courseCode).get(groupCode);
+								if (temp != null) constr_maxOneGroupPerTimeslot.addTerm(1, temp); // Some groups might have been automatically added to this timeslot since they're part of a composite but in reality this course doesn't have them
+							}
 						}
 					}
 					
@@ -142,8 +146,8 @@ public class AssignmentProblem {
 	private void solve() throws IOException, IloException {
 		// Solve the problem
 		if (cplex.solve()) {
-			OutputDataWriter writer = new OutputDataWriter(cplex, coursesGroups, students);
-			//writer.writeOutputData(outputPath);
+			OutputDataWriter writer = new OutputDataWriter(cplex, coursesGroups, students, outputPath);
+			writer.writeOutputData();
 		}
 		else {
 			System.out.println("Failed to solve problem.");

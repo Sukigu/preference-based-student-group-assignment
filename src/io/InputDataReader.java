@@ -16,6 +16,7 @@ import model.StudentPreference;
 public class InputDataReader {
 	private String groupsFilename, groupCompositesFilename, preferencesFilename, gradesFilename, procVersion;
 	private List<List<Map<String, List<String>>>> schedule;
+	private Map<String, Course> mandatoryCourses;
 	private Map<Course, Map<String, Group>> coursesGroups;
 	private Map<String, Student> students;
 	
@@ -39,6 +40,7 @@ public class InputDataReader {
 			schedule.add(dayList);
 		}
 		
+		mandatoryCourses = new HashMap<>();
 		coursesGroups = new HashMap<>();
 		students = new HashMap<>();
 	}
@@ -69,7 +71,7 @@ public class InputDataReader {
 		String fileLine;
 		
 		while ((fileLine = reader.readLine()) != null) {
-			String[] line = fileLine.replace(" ", "").split(";");
+			String[] line = fileLine.split(";");
 			
 			String courseCode = line[1];
 			String groupCode = line[0];
@@ -79,8 +81,9 @@ public class InputDataReader {
 			int groupCapacity = Integer.parseInt(line[5]);
 			boolean mandatory = (Integer.parseInt(line[6]) == 0) ? true : false;
 			
-			if (!groupCode.startsWith("COMP_")) { // If it's not a group composite, add this group alone to the schedule
+			if (!groupComposites.keySet().contains(groupCode)) { // If it's not a group composite, add this group alone to the schedule
 				Course thisCourse = new Course(courseCode, mandatory);
+				if (mandatory) mandatoryCourses.putIfAbsent(courseCode, thisCourse);
 				coursesGroups.putIfAbsent(thisCourse, new HashMap<>());
 				coursesGroups.get(thisCourse).put(groupCode, new Group(groupCode, groupCapacity));
 				
@@ -117,12 +120,12 @@ public class InputDataReader {
 		String fileLine;
 		
 		while ((fileLine = reader.readLine()) != null) {
-			String[] line = fileLine.replace(" ", "").split(";");
+			String[] line = fileLine.split(";");
 			
 			String compositeName = line[0];
 			List<String> groupCodes = new ArrayList<>();
 			
-			for (int i = 1; true; ++i) {
+			for (int i = 1; i < line.length; ++i) {
 				String groupCode = line[i];
 				
 				if (groupCode.equals("")) break;
@@ -172,7 +175,9 @@ public class InputDataReader {
 			
 			thisPreference.addCourseGroupPair(courseCode, coursesGroups.get(new Course(courseCode, false)).get(groupCode));
 			
-			// TODO: ADD ENROLLED COURSES TO THIS STUDENT
+			if (mandatoryCourses.get(courseCode) != null) { // If this course is mandatory...
+				thisStudent.getEnrolledCourses().add(courseCode); // Add it to the list of this student's enrollments
+			}
 			
 			prevStudent = thisStudent;
 		}

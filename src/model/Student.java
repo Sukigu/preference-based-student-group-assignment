@@ -1,5 +1,6 @@
 package model;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -18,6 +19,7 @@ public class Student {
 		this.code = code;
 		this.avgGrade = -1;
 		this.preferences = new HashMap<>();
+		this.enrolledCourses = new ArrayList<>();
 	}
 	
 	public String getCode() {
