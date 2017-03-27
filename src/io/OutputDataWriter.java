@@ -41,15 +41,17 @@ public class OutputDataWriter {
 		int courseEnrollments = 0, courseAssignments = 0, completeAssignments = 0;
 		
 		for (Student student : students.values()) {
+			int studentEnrollments = 0, studentAssignments = 0;
+			
 			for (Map.Entry<String, Map<String, IloIntVar>> courseEntry : student.getCourseGroupAssignments().entrySet()) {
-				++courseEnrollments;
+				++courseEnrollments; ++studentEnrollments;
 				String courseCode = courseEntry.getKey();
 				
 				for (Map.Entry<String, IloIntVar> groupEntry : courseEntry.getValue().entrySet()) {
 					IloIntVar assignmentVar = groupEntry.getValue();
 					
 					if (cplex.getValue(assignmentVar) == 1) {
-						++courseAssignments;
+						++courseAssignments; ++studentAssignments;
 						String groupCode = groupEntry.getKey();
 						
 						writer.newLine();
@@ -58,10 +60,9 @@ public class OutputDataWriter {
 						break; // A student can't be assigned to more than one group per course, so the loop can be terminated
 					}
 				}
-				System.out.print("");
 			}
 			
-			if (cplex.getValue(student.getHasCompleteAssignment()) == 1) ++completeAssignments;
+			if (studentEnrollments == studentAssignments) ++completeAssignments;
 		}
 		
 		writer.close();
