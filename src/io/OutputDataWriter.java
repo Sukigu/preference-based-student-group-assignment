@@ -38,7 +38,7 @@ public class OutputDataWriter {
 		BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outputPath + "colocações.csv"), "utf-8"));
 		writer.write("ESTUD_NUM_UNICO_INST;NOME;OPCAO;CODIGO;SIGLA");
 		
-		int courseEnrollments = 0, courseAssignments = 0;
+		int courseEnrollments = 0, courseAssignments = 0, completeAssignments = 0;
 		
 		for (Student student : students.values()) {
 			for (Map.Entry<String, Map<String, IloIntVar>> courseEntry : student.getCourseGroupAssignments().entrySet()) {
@@ -54,14 +54,19 @@ public class OutputDataWriter {
 						
 						writer.newLine();
 						writer.write(student.getCode() + ";" + student.getName() + ";" + "-1" + ";" + courseCode + ";" + groupCode);
+						
+						break; // A student can't be assigned to more than one group per course, so the loop can be terminated
 					}
 				}
+				System.out.print("");
 			}
+			
+			if (cplex.getValue(student.getHasCompleteAssignment()) == 1) ++completeAssignments;
 		}
 		
 		writer.close();
 		
-		writeAssignmentStats(courseEnrollments, courseAssignments);
+		writeAssignmentStats(courseEnrollments, courseAssignments, students.size(), completeAssignments);
 	}
 	
 	private void writeStudentsAssignments() throws IloException, IOException {
@@ -95,7 +100,7 @@ public class OutputDataWriter {
 		writer.close();
 	}
 	
-	private void writeAssignmentStats(int courseEnrollments, int courseAssignments) throws IOException {
+	private void writeAssignmentStats(int courseEnrollments, int courseAssignments, int numStudents, int completeAssignments) throws IOException {
 		BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outputPath + "estatísticas.txt"), "utf-8"));
 		
 		writer.write("Inscrições em UCs: " + courseEnrollments);
@@ -103,6 +108,12 @@ public class OutputDataWriter {
 		writer.write("Colocações em UCs: " + courseAssignments);
 		writer.newLine();
 		writer.write("Percentagem de colocações: " + (float) courseAssignments / courseEnrollments * 100 + "%");
+		writer.newLine(); writer.newLine();
+		writer.write("Número de estudantes: " + numStudents);
+		writer.newLine();
+		writer.write("Colocações completas: " + completeAssignments);
+		writer.newLine();
+		writer.write("Percentagem de colocações completas: " + (float) completeAssignments / numStudents * 100 + "%");
 		
 		writer.close();
 	}

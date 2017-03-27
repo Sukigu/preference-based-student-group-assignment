@@ -1,9 +1,9 @@
 package model;
 
-import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.List;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 
 import ilog.concert.IloIntVar;
 
@@ -12,14 +12,15 @@ public class Student {
 	private String name;
 	private float avgGrade;
 	private Map<Integer, StudentPreference> preferences; // Order -> preference
-	private List<String> enrolledCourses; // List of the (mandatory) courses this student is enrolling in
-	private Map<String, Map<String, IloIntVar>> courseGroupAssignments; // Course code -> (group code -> (boolean variable))
-																		// When "manually" allocating students, this indicates which groups this student is assigned to
+	private Set<String> enrolledCourses; // List of the (mandatory) courses this student enrolled in
+	private Map<String, Map<String, IloIntVar>> courseGroupAssignments; // Course code -> (group code -> (boolean variable indicating assignment))
+	private IloIntVar hasCompleteAssignment; // Boolean variable indicating if this student was assigned to all courses they enrolled in
+	
 	public Student(String code) {
 		this.code = code;
 		this.avgGrade = -1;
 		this.preferences = new HashMap<>();
-		this.enrolledCourses = new ArrayList<>();
+		this.enrolledCourses = new HashSet<>();
 	}
 	
 	public String getCode() {
@@ -46,7 +47,7 @@ public class Student {
 		return preferences;
 	}
 	
-	public List<String> getEnrolledCourses() {
+	public Set<String> getEnrolledCourses() {
 		return enrolledCourses;
 	}
 	
@@ -56,6 +57,14 @@ public class Student {
 	
 	public void setCourseGroupAssignments(Map<String, Map<String, IloIntVar>> courseGroupAssignments) {
 		this.courseGroupAssignments = courseGroupAssignments;
+	}
+	
+	public IloIntVar getHasCompleteAssignment() {
+		return hasCompleteAssignment;
+	}
+	
+	public void setHasCompleteAssignment(IloIntVar hasCompleteAssignment) {
+		this.hasCompleteAssignment = hasCompleteAssignment;
 	}
 	
 	@Override

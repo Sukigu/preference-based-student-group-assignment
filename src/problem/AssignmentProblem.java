@@ -8,6 +8,7 @@ import java.util.Map;
 import ilog.concert.IloException;
 import ilog.concert.IloIntVar;
 import ilog.concert.IloLinearIntExpr;
+import ilog.concert.IloNumExpr;
 import ilog.cplex.IloCplex;
 import io.InputDataReader;
 import io.OutputDataWriter;
@@ -77,42 +78,58 @@ public class AssignmentProblem {
 	}
 	
 	private void defineManualAssignmentProblem() throws IloException {
-		IloLinearIntExpr obj_maximizeAssignments = cplex.linearIntExpr(); // Sum of all group assignments for all students in all courses
+		IloLinearIntExpr sumAllGroupAssignmentsAllStudents = cplex.linearIntExpr(); // Sum of all group assignments for all students in all courses
+		IloLinearIntExpr sumAllCompleteAssignments = cplex.linearIntExpr(); // Number of students assigned to all enrolled courses
+		int numCourseEnrollments = 0; // Number of course enrollments (student-course pairs)
 		
 		for (Student student : students.values()) { // For each student...
 			Map<String, Map<String, IloIntVar>> courseGroupAssignments = new HashMap<>();
 			
+			IloIntVar hasCompleteAssignment = cplex.boolVar(); // Boolean variable indicating if this student was assigned to all courses they enrolled in
+			sumAllCompleteAssignments.addTerm(1, hasCompleteAssignment);
+			
+			IloLinearIntExpr sumAllGroupAssignments = cplex.linearIntExpr(); // Sum of group assignments for this student
+			
 			for (Map.Entry<Course, Map<String, Group>> courseEntry : coursesGroups.entrySet()) { // For each course...
 				if (student.getEnrolledCourses().contains(courseEntry.getKey().getCode())) { // If this student is enrolled in it...
+					++numCourseEnrollments;
 					Map<String, IloIntVar> groupAssignments = new HashMap<>();
-					IloLinearIntExpr constr_maxOneGroupPerCourse = cplex.linearIntExpr(); // Sum of all group assignments for this course for this student
+					IloLinearIntExpr sumAllGroupAssignmentsPerCourse = cplex.linearIntExpr(); // Sum of all group assignments for this course for this student
 					
 					for (Map.Entry<String, Group> groupEntry : courseEntry.getValue().entrySet()) { // For each group...
 						IloIntVar var_assignedToGroup = cplex.boolVar(); // VARIABLE: this student is assigned to this group for this course
 						
-						// Paper constraint 1 (modified to allow partial assignments)
-						constr_maxOneGroupPerCourse.addTerm(1, var_assignedToGroup);
+						// Add this variable to the sum of all group assignments for this course for this student
+						sumAllGroupAssignmentsPerCourse.addTerm(1, var_assignedToGroup);
 						
-						// Paper constraint 3
+						// Add this variable to the sum of all student assignments for this group for this course
 						groupEntry.getValue().addTermToConstrSumAssignedStudents(cplex, var_assignedToGroup);
 						
-						// Objective function
-						obj_maximizeAssignments.addTerm(1, var_assignedToGroup);
+						// Add this variable to the sum of all group assignments for all students in all courses
+						sumAllGroupAssignmentsAllStudents.addTerm(1, var_assignedToGroup);
 						
+						// Add this variable to this student's personal assignments
 						groupAssignments.put(groupEntry.getKey(), var_assignedToGroup); 
 					}
 					
-					cplex.addLe(constr_maxOneGroupPerCourse, 1); // CONSTRAINT: a student can be assigned to at most 1 group per course
+					cplex.addLe(sumAllGroupAssignmentsPerCourse, 1); // CONSTRAINT: a student can be assigned to at most 1 group per course
+					sumAllGroupAssignments.add(sumAllGroupAssignmentsPerCourse); // Add this course's group assignments to the sum of all group assignments for this student
 					courseGroupAssignments.put(courseEntry.getKey().getCode(), groupAssignments);
 				}
 			}
 			
 			student.setCourseGroupAssignments(courseGroupAssignments);
+			student.setHasCompleteAssignment(hasCompleteAssignment);
 			
-			// Paper constraint 2
+			// CONSTRAINT: the sum of all group assignments for this student must be <= variable indicating a complete assignment * number of course enrollments for this student
+			IloLinearIntExpr completeAssignmentTimesNumEnrollments = cplex.linearIntExpr();
+			completeAssignmentTimesNumEnrollments.addTerm(hasCompleteAssignment, student.getEnrolledCourses().size());
+			cplex.addEq(sumAllGroupAssignments, completeAssignmentTimesNumEnrollments);
+			
+			// Time conflict constraints
 			for (List<Map<String, List<String>>> day : schedule) { // For each day...
 				for (Map<String, List<String>> timeslot : day) { // For each timeslot...
-					IloLinearIntExpr constr_maxOneGroupPerTimeslot = cplex.linearIntExpr(); // Sum of all group assignments for this timeslot for this student
+					IloLinearIntExpr sumAllGroupAssignmentsPerTimeslot = cplex.linearIntExpr(); // Sum of all group assignments for this timeslot for this student
 					
 					for (Map.Entry<String, List<String>> timeslotCourse : timeslot.entrySet()) { // For each course taught in this timeslot...
 						if (student.getEnrolledCourses().contains(timeslotCourse.getKey())) { // If this student is enrolled in it...
@@ -121,12 +138,12 @@ public class AssignmentProblem {
 							
 							for (String groupCode : groupCodes) { // For each group of this course taught in this timeslot...
 								IloIntVar temp = courseGroupAssignments.get(courseCode).get(groupCode);
-								if (temp != null) constr_maxOneGroupPerTimeslot.addTerm(1, temp); // Some groups might have been automatically added to this timeslot since they're part of a composite but in reality this course doesn't have them
+								if (temp != null) sumAllGroupAssignmentsPerTimeslot.addTerm(1, temp); // Some groups might have been automatically added to this timeslot since they're part of a composite but in reality this course doesn't have them
 							}
 						}
 					}
 					
-					cplex.addLe(constr_maxOneGroupPerTimeslot, 1); // CONSTRAINT: a student can be assigned to at most 1 group per timeslot
+					cplex.addLe(sumAllGroupAssignmentsPerTimeslot, 1); // CONSTRAINT: a student can be assigned to at most 1 group per timeslot
 				}
 			}
 		}
@@ -140,7 +157,10 @@ public class AssignmentProblem {
 			}
 		}
 		
-		cplex.addMaximize(obj_maximizeAssignments); // OBJECTIVE: maximize the number of students assigned to groups
+		IloNumExpr objectiveMaximizeCompleteAssignments = cplex.prod(.8 / students.size(), sumAllCompleteAssignments);
+		IloNumExpr objectiveMaximizeSumAllAssignments = cplex.prod(.2 / numCourseEnrollments, sumAllGroupAssignmentsAllStudents);
+		IloNumExpr objective = cplex.sum(objectiveMaximizeCompleteAssignments, objectiveMaximizeSumAllAssignments);
+		cplex.addMaximize(objective); // OBJECTIVE: maximize (.8 * sum of complete assignments / total students) + (.2 * sum of all group assignments / number of course enrollments)
 	}
 	
 	private void solve() throws IOException, IloException {
