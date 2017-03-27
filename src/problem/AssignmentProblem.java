@@ -121,10 +121,8 @@ public class AssignmentProblem {
 			student.setCourseGroupAssignments(courseGroupAssignments);
 			student.setHasCompleteAssignment(hasCompleteAssignment);
 			
-			// CONSTRAINT: the sum of all group assignments for this student must be <= variable indicating a complete assignment * number of course enrollments for this student
-			IloLinearIntExpr completeAssignmentTimesNumEnrollments = cplex.linearIntExpr();
-			completeAssignmentTimesNumEnrollments.addTerm(hasCompleteAssignment, student.getEnrolledCourses().size());
-			cplex.addLe(sumAllGroupAssignments, completeAssignmentTimesNumEnrollments);
+			// Add constraint: if sum of all assignments for this student < no. of enrolled courses, then he doesn't have a complete assignment (variable = 0)
+			cplex.add(cplex.ifThen(cplex.le(sumAllGroupAssignments, student.getEnrolledCourses().size() - 1), cplex.eq(hasCompleteAssignment, 0)));
 			
 			// Time conflict constraints
 			for (List<Map<String, List<String>>> day : schedule) { // For each day...

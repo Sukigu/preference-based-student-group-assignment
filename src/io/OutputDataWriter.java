@@ -38,7 +38,7 @@ public class OutputDataWriter {
 		BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outputPath + "colocações.csv"), "utf-8"));
 		writer.write("ESTUD_NUM_UNICO_INST;NOME;OPCAO;CODIGO;SIGLA");
 		
-		int courseEnrollments = 0, courseAssignments = 0, completeAssignments = 0;
+		int courseEnrollments = 0, courseAssignments = 0, completeAssignments = 0, partialAssignments = 0;
 		
 		for (Student student : students.values()) {
 			int studentEnrollments = 0, studentAssignments = 0;
@@ -62,12 +62,23 @@ public class OutputDataWriter {
 				}
 			}
 			
-			if (studentEnrollments == studentAssignments) ++completeAssignments;
+			boolean hasCompleteAssignmentCplex = (cplex.getValue(student.getHasCompleteAssignment()) == 1); // CPLEX variable indicating a complete assignment
+			boolean hasCompleteAssignmentCheck = (studentEnrollments == studentAssignments); // Manually checking if the student has a complete assignment
+			
+			if (hasCompleteAssignmentCplex != hasCompleteAssignmentCheck) {
+				System.out.println("CPLEX reports incorrect number of complete assignments!");
+			}
+			else if (hasCompleteAssignmentCheck) {
+				++completeAssignments;
+			}
+			else if (studentAssignments > 0) {
+				++partialAssignments;
+			}
 		}
 		
 		writer.close();
 		
-		writeAssignmentStats(courseEnrollments, courseAssignments, students.size(), completeAssignments);
+		writeAssignmentStats(courseEnrollments, courseAssignments, students.size(), completeAssignments, partialAssignments);
 	}
 	
 	private void writeStudentsAssignments() throws IloException, IOException {
@@ -101,7 +112,7 @@ public class OutputDataWriter {
 		writer.close();
 	}
 	
-	private void writeAssignmentStats(int courseEnrollments, int courseAssignments, int numStudents, int completeAssignments) throws IOException {
+	private void writeAssignmentStats(int courseEnrollments, int courseAssignments, int numStudents, int completeAssignments, int partialAssignments) throws IOException {
 		BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(outputPath + "estatísticas.txt"), "utf-8"));
 		
 		writer.write("Inscrições em UCs: " + courseEnrollments);
@@ -114,7 +125,13 @@ public class OutputDataWriter {
 		writer.newLine();
 		writer.write("Colocações completas: " + completeAssignments);
 		writer.newLine();
+		writer.write("Colocações parciais: " + partialAssignments);
+		writer.newLine();
 		writer.write("Percentagem de colocações completas: " + (float) completeAssignments / numStudents * 100 + "%");
+		writer.newLine(); writer.newLine();
+		writer.write("Inscrições médias por estudante: " + (float) courseEnrollments / numStudents);
+		writer.newLine();
+		writer.write("Colocações médias por estudante: " + (float) courseAssignments / numStudents);
 		
 		writer.close();
 	}
