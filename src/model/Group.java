@@ -25,6 +25,10 @@ public class Group {
 		return capacity;
 	}
 	
+	public void setCapacity(int capacity) {
+		this.capacity = capacity;
+	}
+	
 	public IloLinearIntExpr getConstrSumAssignedStudents() {
 		return constr_sumAssignedStudents;
 	}

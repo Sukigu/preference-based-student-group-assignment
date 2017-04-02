@@ -1,7 +1,8 @@
 package model;
 
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -11,16 +12,16 @@ public class Student {
 	private String code;
 	private String name;
 	private float avgGrade;
-	private Map<Integer, StudentPreference> preferences; // Order -> preference
-	private Set<String> enrolledCourses; // List of the (mandatory) courses this student enrolled in
+	private List<StudentPreference> preferences; // Order -> preference
+	private Set<Course> enrolledMandatoryCourses; // List of the mandatory courses this student enrolled in
 	private Map<String, Map<String, IloIntVar>> courseGroupAssignments; // Course code -> (group code -> (boolean variable indicating assignment))
 	private IloIntVar hasCompleteAssignment; // Boolean variable indicating if this student was assigned to all courses they enrolled in
 	
 	public Student(String code) {
 		this.code = code;
 		this.avgGrade = -1;
-		this.preferences = new HashMap<>();
-		this.enrolledCourses = new HashSet<>();
+		this.preferences = new ArrayList<>();
+		this.enrolledMandatoryCourses = new HashSet<>();
 	}
 	
 	public String getCode() {
@@ -43,12 +44,12 @@ public class Student {
 		this.avgGrade = avgGrade;
 	}
 	
-	public Map<Integer, StudentPreference> getPreferences() {
+	public List<StudentPreference> getPreferences() {
 		return preferences;
 	}
 	
-	public Set<String> getEnrolledCourses() {
-		return enrolledCourses;
+	public Set<Course> getEnrolledMandatoryCourses() {
+		return enrolledMandatoryCourses;
 	}
 	
 	public Map<String, Map<String, IloIntVar>> getCourseGroupAssignments() {

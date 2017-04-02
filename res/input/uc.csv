@@ -1,0 +1,73 @@
+﻿CODIGO;SIGLA;NOME;SEMESTRE;N_HORAS_SEMANAIS;OPTATIVA
+EIC0003;ALGE;Álgebra;1S;4;0
+EIC0004;AMAT;Análise Matemática;1S;5;0
+EIC0005;FPRO;Fundamentos da Programação;1S;5;0
+EIC0009;CMAT;Complementos de Matemática;2S;4;0
+EIC0010;FISI1;Física I;2S;4;0
+EIC0011;MDIS;Matemática Discreta;1S;5;0
+EIC0012;PROG;Programação;2S;5;0
+EIC0013;AEDA;Algoritmos e Estruturas de Dados;1S;5;0
+EIC0014;FISI2;Física II;1S;4;0
+EIC0016;MPCP;Microprocessadores e Computadores Pessoais;2S;4;0
+EIC0019;CGRA;Computação Gráfica;2S;4;0
+EIC0020;LCOM;Laboratório de Computadores;1S;5;0
+EIC0021;MNUM;Métodos Numéricos;1S;4;0
+EIC0022;TCOM;Teoria da Computação;1S;4;0
+EIC0023;BDAD;Bases de Dados;2S;4;0
+EIC0024;ESOF;Engenharia de Software;1S;4;0
+EIC0026;PLOG;Programação em Lógica;1S;4;0
+EIC0027;SOPE;Sistemas Operativos;2S;4;0
+EIC0028;COMP;Compiladores;2S;4;0
+EIC0029;IART;Inteligência Artificial;2S;4;0
+EIC0031;PPIN;Proficiência Pessoal e Interpessoal;2S;4;0
+EIC0032;RCOM;Redes de Computadores;1S;4;0
+EIC0033;AIAD;Agentes e Inteligência Artificial Distribuída;1S;4;0
+EIC0034;GEMP;Gestão de Empresas;1S;4;0
+EIC0036;SDIS;Sistemas Distribuídos;2S;4;0
+EIC0037;IOPE;Investigação Operacional;2S;4;0
+EIC0039;MFES;Métodos Formais em Engenharia de Software;1S;4;0
+EIC0040;SINF;Sistemas de Informação;1S;4;0
+EIC0041;DISS;Dissertação;1S;0;0
+EIC0041;DISS;Dissertação;2S;0;0
+EIC0044;APIN;Análise de Projectos de Investimento;1S;3;1
+EIC0046;ADAD;Armazéns de Dados;1S;3;1
+EIC0048;ASSO;Arquitectura de Sistemas de Software;2S;3;1
+EIC0050;CMOV;Computação Móvel;1S;3;1
+EIC0053;ERSS;Engenharia de Requisitos de Sistemas de Software;2S;3;1
+EIC0057;IPCO;Interacção Pessoa-Computador;1S;3;1
+EIC0061;MARK;Marketing;2S;3;1
+EIC0062;MADS;Metodologias Ágeis de Desenvolvimento de Software;1S;3;1
+EIC0064;MNSE;Multimédia e Novos Serviços;2S;3;1
+EIC0070;RVAU;Realidade Virtual e Aumentada;1S;3;1
+EIC0071;ROBO;Robótica;1S;3;1
+EIC0072;SSIN;Segurança em Sistemas Informáticos;1S;3;1
+EIC0072;SSIN;Segurança em Sistemas Informáticos;2S;3;1
+EIC0076;TBDA;Tecnologias de Bases de Dados;2S;3;1
+EIC0077;TDIN;Tecnologias de Distribuição e Integração;2S;3;1
+EIC0082;CMO;Comunicações Móveis;2S;3;1
+EIC0083;AOCO;Arquitectura e Organização de Computadores;1S;5;0
+EIC0084;LAIG;Laboratório de Aplicações com Interface Gráfica;1S;5;0
+EIC0085;LBAW;Laboratório de Bases de Dados e Aplicações Web;2S;5;0
+EIC0086;LDSO;Laboratório de Desenvolvimento de Software;1S;5;0
+EIC0087;PDIS;Preparação da Dissertação;1S;3;0
+EIC0087;PDIS;Preparação da Dissertação;2S;3;0
+EIC0089;CPAR;Computação Paralela;2S;3;1
+EIC0090;DJCO;Desenvolvimento de Jogos de Computador;2S;3;1
+EIC0091;GOLO;Gestão de Operações e Logística;2S;3;1
+EIC0092;SRSI;Serviços de Rede e de Sistema;1S;3;1
+EIC0095;AGRS;Arquitectura e Gestão de Redes e Sistemas;2S;3;1
+EIC0096;ECAC;Extracção de Conhecimento e Aprendizagem Computacional;1S;3;1
+EIC0098;MSSI;Modelação e Simulação de Sistemas;2S;3;1
+EIC0099;SESI;Seminário de Engenharia de Software e Sistemas de Informação;1S;3;1
+EIC0101;SSIM;Seminário de Sistemas Inteligentes, Interacção e Multimédia;1S;3;1
+EIC0102;SETR;Sistemas Embutidos e de Tempo Real;2S;3;1
+EIC0104;VCOM;Visão por Computador;1S;3;1
+EIC0105;MEST;Métodos Estatísticos;2S;4;0
+EIC0106;LGPR;Laboratório de Gestão de Projectos;2S;5;0
+EIC0107;LAPD;Linguagens de Anotação e Processamento de Documentos;2S;3;1
+EIC0108;DAPI;Descrição, Armazenamento e Pesquisa de Informação;1S;3;1
+EIC0110;CAL;Concepção e Análise de Algoritmos;2S;4;0
+EIC0111;LPOO;Laboratório de Programação Orientada por Objectos;2S;5;0
+EIC0112;LTW;Linguagens e Tecnologias Web;1S;4;0
+EIC0113;TVVS;Teste, Verificação e Validação de Software;1S;3;1
+FEUP002;PF;Projeto FEUP;1S;113;0

@@ -8,7 +8,7 @@ import model.Group;
 
 public class StudentPreference {
 	private int order;
-	private Map<String, Group> courseGroupPairs;
+	private Map<Course, Group> courseGroupPairs;
 	private IloIntVar var_preferenceAssigned; // Decision variable to indicate if this preference has been assigned to the student
 	private int weight; // Importance of this specific student preference regarding all other preferences
 	
@@ -22,11 +22,11 @@ public class StudentPreference {
 		return order;
 	}
 	
-	public Map<String, Group> getCourseGroupPairs() {
+	public Map<Course, Group> getCourseGroupPairs() {
 		return courseGroupPairs;
 	}
 	
-	public void addCourseGroupPair(String course, Group group) {
+	public void addCourseGroupPair(Course course, Group group) {
 		courseGroupPairs.put(course, group);
 	}
 	
