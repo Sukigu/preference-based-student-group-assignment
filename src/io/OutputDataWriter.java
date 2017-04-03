@@ -44,19 +44,23 @@ public class OutputDataWriter {
 		for (Student student : students.values()) {
 			int studentEnrollments = 0, studentAssignments = 0;
 			
-			for (Map.Entry<String, Map<String, IloIntVar>> courseEntry : student.getCourseGroupAssignments().entrySet()) {
+			for (Map.Entry<Course, Map<Group, IloIntVar>> courseEntry : student.getCourseGroupAssignments().entrySet()) {
 				++courseEnrollments; ++studentEnrollments;
-				String courseCode = courseEntry.getKey();
+				Course course = courseEntry.getKey();
 				
-				for (Map.Entry<String, IloIntVar> groupEntry : courseEntry.getValue().entrySet()) {
+				for (Map.Entry<Group, IloIntVar> groupEntry : courseEntry.getValue().entrySet()) {
 					IloIntVar assignmentVar = groupEntry.getValue();
 					
 					if (cplex.getValue(assignmentVar) == 1) {
 						++courseAssignments; ++studentAssignments;
-						String groupCode = groupEntry.getKey();
+						Group group = groupEntry.getKey();
 						
 						writer.newLine();
-						writer.write(student.getCode() + ";" + student.getName() + ";" + "-1" + ";" + courseCode + ";" + groupCode);
+						writer.write(student.getCode() + ";" + student.getName() + ";" + "-1" + ";" + course.getCode() + ";" + group.getCode());
+						
+						{
+							System.out.println(student.getCode() + ";" + student.getName() + ";" + "-1" + ";" + course.getCode() + ";" + group.getCode());
+						}
 						
 						break; // A student can't be assigned to more than one group per course, so the loop can be terminated
 					}

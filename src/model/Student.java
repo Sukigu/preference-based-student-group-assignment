@@ -13,15 +13,17 @@ public class Student {
 	private String name;
 	private float avgGrade;
 	private List<StudentPreference> preferences; // Order -> preference
-	private Set<Course> enrolledMandatoryCourses; // List of the mandatory courses this student enrolled in
-	private Map<String, Map<String, IloIntVar>> courseGroupAssignments; // Course code -> (group code -> (boolean variable indicating assignment))
+	private Set<Course> enrolledCourses; // List of the mandatory courses this student enrolled in
+	private int targetSumOfTimeslots; // If this student were to be assigned to all courses they enrolled in, they'd be expected to occupy this number of weekly timeslots
+	private Map<Course, Map<Group, IloIntVar>> courseGroupAssignments; // Course code -> (group code -> (boolean variable indicating assignment))
 	private IloIntVar hasCompleteAssignment; // Boolean variable indicating if this student was assigned to all courses they enrolled in
 	
 	public Student(String code) {
 		this.code = code;
 		this.avgGrade = -1;
 		this.preferences = new ArrayList<>();
-		this.enrolledMandatoryCourses = new HashSet<>();
+		this.enrolledCourses = new HashSet<>();
+		this.targetSumOfTimeslots = 0;
 	}
 	
 	public String getCode() {
@@ -48,15 +50,23 @@ public class Student {
 		return preferences;
 	}
 	
-	public Set<Course> getEnrolledMandatoryCourses() {
-		return enrolledMandatoryCourses;
+	public Set<Course> getEnrolledCourses() {
+		return enrolledCourses;
 	}
 	
-	public Map<String, Map<String, IloIntVar>> getCourseGroupAssignments() {
+	public int getTargetSumOfTimeslots() {
+		return targetSumOfTimeslots;
+	}
+	
+	public void addToTargetSumOfTimeslots(int delta) {
+		this.targetSumOfTimeslots += delta;
+	}
+	
+	public Map<Course, Map<Group, IloIntVar>> getCourseGroupAssignments() {
 		return courseGroupAssignments;
 	}
 	
-	public void setCourseGroupAssignments(Map<String, Map<String, IloIntVar>> courseGroupAssignments) {
+	public void setCourseGroupAssignments(Map<Course, Map<Group, IloIntVar>> courseGroupAssignments) {
 		this.courseGroupAssignments = courseGroupAssignments;
 	}
 	
@@ -79,5 +89,10 @@ public class Student {
 	@Override
 	public int hashCode() {
 		return code.hashCode();
+	}
+	
+	@Override
+	public String toString() {
+		return code;
 	}
 }

@@ -9,12 +9,10 @@ public class Group {
 	private String code;
 	private int capacity;
 	private IloLinearIntExpr constr_sumAssignedStudents; // Sum of all decision variables indicating whether a student has been assigned to this group
-	//private int[][] schedule;
 	
 	public Group(String code, int capacity) {
 		this.code = code;
 		this.capacity = capacity;
-		//this.schedule = new int[6][25];
 	}
 	
 	public String getCode() {
@@ -38,10 +36,6 @@ public class Group {
 		constr_sumAssignedStudents.addTerm(1, var_preferenceAssigned);
 	}
 	
-	/*public int[][] getSchedule() {
-		return schedule;
-	}*/
-	
 	@Override
 	public boolean equals(Object obj) {
 		if (obj instanceof Group) {
@@ -53,5 +47,10 @@ public class Group {
 	@Override
 	public int hashCode() {
 		return code.hashCode();
+	}
+	
+	@Override
+	public String toString() {
+		return code;
 	}
 }
