@@ -185,8 +185,8 @@ public class AssignmentProblem {
 	private void solve() throws IOException, IloException {
 		// Solve the problem
 		if (cplex.solve()) {
-			System.out.println(cplex.getStatus());
-			OutputDataWriter writer = new OutputDataWriter(cplex, courses, students, outputPath);
+			System.out.println("Solution found by CPLEX is " + cplex.getStatus() + ".");
+			OutputDataWriter writer = new OutputDataWriter(cplex, cplex.getParam(IloCplex.DoubleParam.EpRHS), courses, students, outputPath);
 			writer.writeOutputData();
 		}
 		else {

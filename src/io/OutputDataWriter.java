@@ -18,12 +18,14 @@ import model.StudentPreference;
 
 public class OutputDataWriter {
 	private IloCplex cplex;
+	private double cplexTolerance;
 	private Map<String, Course> courses;
 	private Map<String, Student> students;
 	private String outputPath;
 	
-	public OutputDataWriter(IloCplex cplex, Map<String, Course> courses, Map<String, Student> students, String outputPath) {
+	public OutputDataWriter(IloCplex cplex, double cplexTolerance, Map<String, Course> courses, Map<String, Student> students, String outputPath) {
 		this.cplex = cplex;
+		this.cplexTolerance = cplexTolerance;
 		this.courses = courses;
 		this.students = students;
 		this.outputPath = outputPath;
@@ -42,32 +44,28 @@ public class OutputDataWriter {
 		int courseEnrollments = 0, courseAssignments = 0, completeAssignments = 0, partialAssignments = 0;
 		
 		for (Student student : students.values()) {
-			int studentEnrollments = 0, studentAssignments = 0;
+			int studentEnrollments = 0, studentAssignments = 0; String temp = "";
 			
 			for (Map.Entry<Course, Map<Group, IloIntVar>> courseEntry : student.getCourseGroupAssignments().entrySet()) {
 				++courseEnrollments; ++studentEnrollments;
 				Course course = courseEntry.getKey();
 				
 				for (Map.Entry<Group, IloIntVar> groupEntry : courseEntry.getValue().entrySet()) {
-					IloIntVar assignmentVar = groupEntry.getValue();
+					IloIntVar assignmentVar = groupEntry.getValue(); temp += cplex.getValue(assignmentVar) + "\n";
 					
-					if (cplex.getValue(assignmentVar) == 1) {
+					if (Math.abs(cplex.getValue(assignmentVar) - 1) < cplexTolerance) {
 						++courseAssignments; ++studentAssignments;
 						Group group = groupEntry.getKey();
 						
 						writer.newLine();
 						writer.write(student.getCode() + ";" + student.getName() + ";" + "-1" + ";" + course.getCode() + ";" + group.getCode());
 						
-						{
-							System.out.println(student.getCode() + ";" + student.getName() + ";" + "-1" + ";" + course.getCode() + ";" + group.getCode());
-						}
-						
 						break; // A student can't be assigned to more than one group per course, so the loop can be terminated
 					}
 				}
 			}
 			
-			boolean hasCompleteAssignmentCplex = (cplex.getValue(student.getHasCompleteAssignment()) == 1); // CPLEX variable indicating a complete assignment
+			boolean hasCompleteAssignmentCplex = (Math.abs(cplex.getValue(student.getHasCompleteAssignment()) - 1) < cplexTolerance); // CPLEX variable indicating a complete assignment
 			boolean hasCompleteAssignmentCheck = (studentEnrollments == studentAssignments); // Manually checking if the student has a complete assignment
 			
 			if (hasCompleteAssignmentCplex != hasCompleteAssignmentCheck) {
