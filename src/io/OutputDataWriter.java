@@ -44,14 +44,14 @@ public class OutputDataWriter {
 		int courseEnrollments = 0, courseAssignments = 0, completeAssignments = 0, partialAssignments = 0;
 		
 		for (Student student : students.values()) {
-			int studentEnrollments = 0, studentAssignments = 0; String temp = "";
+			int studentEnrollments = 0, studentAssignments = 0;
 			
 			for (Map.Entry<Course, Map<Group, IloIntVar>> courseEntry : student.getCourseGroupAssignments().entrySet()) {
 				++courseEnrollments; ++studentEnrollments;
 				Course course = courseEntry.getKey();
 				
 				for (Map.Entry<Group, IloIntVar> groupEntry : courseEntry.getValue().entrySet()) {
-					IloIntVar assignmentVar = groupEntry.getValue(); temp += cplex.getValue(assignmentVar) + "\n";
+					IloIntVar assignmentVar = groupEntry.getValue();
 					
 					if (Math.abs(cplex.getValue(assignmentVar) - 1) < cplexTolerance) {
 						++courseAssignments; ++studentAssignments;
@@ -149,7 +149,7 @@ public class OutputDataWriter {
 		
 		for (Course course : courses.values()) {
 			for (Group group : course.getGroups().values()) {
-				IloLinearIntExpr numStudentsAssigned = group.getConstrSumAssignedStudents();
+				IloLinearIntExpr numStudentsAssigned = group.getSumAllAssignedStudents();
 				
 				writer.newLine();
 				writer.write(course.getCode() + ";" + group.getCode() + ";" + (numStudentsAssigned != null ? (int) cplex.getValue(numStudentsAssigned) : 0) + ";" + group.getCapacity());

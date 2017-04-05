@@ -16,7 +16,6 @@ import model.Course;
 import model.Group;
 import model.Schedule;
 import model.Student;
-import model.StudentPreference;
 import model.Timeslot;
 
 public class AssignmentProblem {
@@ -26,6 +25,9 @@ public class AssignmentProblem {
 	private boolean isMandatoryAssignment;
 	private String outputPath;
 	private IloCplex cplex;
+	
+	private int numEnrollments;
+	private int targetNumOccupiedTimeslots;
 	
 	public AssignmentProblem(String coursesFilename, String groupsFilename, String groupCompositesFilename, String preferencesFilename, String gradesFilename, int semester, String procVersion, boolean isMandatoryAssignment, String outputPath) throws IloException, IOException {
 		InputDataReader reader = new InputDataReader(coursesFilename, groupsFilename, groupCompositesFilename, preferencesFilename, gradesFilename, semester, procVersion);
@@ -37,149 +39,119 @@ public class AssignmentProblem {
 		this.isMandatoryAssignment = isMandatoryAssignment;
 		this.outputPath = outputPath;
 		this.cplex = new IloCplex();
+		
+		this.numEnrollments = 0;
+		this.targetNumOccupiedTimeslots = 0;
 	}
 	
 	public void run() throws IloException, IOException {
-		//defineAssignmentProblemWithPreferences();
 		defineManualAssignmentProblem();
 		solve();
 	}
-	
-	private void defineAssignmentProblemWithPreferences() throws IloException {
-		IloLinearIntExpr objective = cplex.linearIntExpr();
+
+	private void defineManualAssignmentProblem() throws IloException {
+		IloLinearIntExpr sumAllAssignments = cplex.linearIntExpr(); // Sum of all assignments of all students
+		IloLinearIntExpr sumAllCompleteStudents = cplex.linearIntExpr(); // Number of students who were assigned to all of their courses
+		IloLinearIntExpr sumAllOccupiedTimeslots = cplex.linearIntExpr(); // Number of total accumulated timeslots occupied
 		
 		for (Student student : students.values()) {
-			IloLinearIntExpr constr_sumAssignedPreferences = cplex.linearIntExpr(); // Sum of all boolean variables indicating an assigned preference
+			IloLinearIntExpr sumAllAssignmentsPerStudent = assignmentPerStudent(student); // Sum of all assignments for this student
+			IloIntVar completeStudent = cplex.boolVar("(Complete assignment for " + student.getCode() + ")"); // VARIABLE: student was assigned to all of their courses? 
 			
-			for (StudentPreference preference : student.getPreferences()) {
-				IloIntVar var_preferenceAssigned = cplex.boolVar(); // 1 if student gets this preference assigned, 0 otherwise
-				
-				preference.setVarPreferenceAssigned(var_preferenceAssigned);
-				objective.addTerm(var_preferenceAssigned, preference.getWeight()); // Build objective function: preferenceAssigned * preferenceWeight
-				constr_sumAssignedPreferences.addTerm(1, var_preferenceAssigned); // Build constraint: sum of all preference assignments for this student
-				
-				for (Group group : preference.getCourseGroupPairs().values()) {
-					group.addTermToConstrSumAssignedStudents(cplex, var_preferenceAssigned); // Build constraint: sum of all students assigned to this group
-				}
+			// CONSTRAINT: if sum of all assignments < number of enrolled courses, then it's not a complete assignment
+			cplex.add(cplex.ifThen(cplex.le(sumAllAssignmentsPerStudent, student.getEnrolledCourses().size() - 1), cplex.eq(completeStudent, 0)));
+			
+			sumAllAssignments.add(sumAllAssignmentsPerStudent);
+			sumAllCompleteStudents.addTerm(1, completeStudent);
+			
+			student.setHasCompleteAssignment(completeStudent);
+			
+			for (Timeslot timeslot : schedule) {
+				assignmentPerStudentTimeslot(student, timeslot);
 			}
-			
-			cplex.addLe(constr_sumAssignedPreferences, 1); // Constraint: a student can have at most 1 preference assigned
 		}
 		
 		for (Course course : courses.values()) {
 			for (Group group : course.getGroups().values()) {
 				if (!isMandatoryAssignment || course.getMandatory()) {
-					cplex.addLe(group.getConstrSumAssignedStudents(), group.getCapacity()); // CONSTRAINT: the sum of assigned students must not exceed this group's capacity
+					cplex.addLe(group.getSumAllAssignedStudents(), group.getCapacity()); // CONSTRAINT: sum of all assigned students <= group's capacity
 				}
-				// Else (if we're assigning mandatory courses but this course is optional), don't add a constraint for the group capacity, since we know for sure everyone fits  
+				// Else (if we're assigning mandatory courses but this course is optional), don't add a constraint for the group capacity, since we know for sure everyone fits
 			}
 		}
 		
-		// Set maximization of objective function
-		cplex.addMaximize(objective);
+		IloNumExpr objMaximizeSumAllAssignments = cplex.prod(1. / numEnrollments, sumAllAssignments);
+		IloNumExpr objMaximizeCompleteStudents = cplex.prod(1. / students.size(), sumAllCompleteStudents);
+		IloNumExpr objMaximizeOccupiedTimeslots = cplex.prod(1. / targetNumOccupiedTimeslots, sumAllOccupiedTimeslots);
+		cplex.addMaximize(cplex.sum(cplex.prod(.1, objMaximizeSumAllAssignments), cplex.prod(.5, objMaximizeCompleteStudents), cplex.prod(.4, objMaximizeOccupiedTimeslots)));
 	}
 	
-	private void defineManualAssignmentProblem() throws IloException {
-		IloLinearIntExpr sumAllGroupAssignmentsAllStudents = cplex.linearIntExpr(); // Sum of all group assignments for all students in all courses
-		IloLinearIntExpr sumAllCompleteAssignments = cplex.linearIntExpr(); // Number of students assigned to all enrolled courses
-		IloLinearIntExpr sumAllOccupiedTimeslots = cplex.linearIntExpr(); // Sum of accumulated total of timeslots students have classes in
-		int numCourseEnrollments = 0; // Number of course enrollments (student-course pairs)
-		int targetSumOfAllOccupiedTimeslots = 0; // Target number of timeslots to be occupied by students
+	private IloLinearIntExpr assignmentPerStudent(Student student) throws IloException {
+		IloLinearIntExpr sumAllAssignmentsPerStudent = cplex.linearIntExpr();
+				
+		for (Course course : student.getEnrolledCourses()) {
+			numEnrollments += 1;
+			targetNumOccupiedTimeslots += course.getWeeklyTimeslots();
+			
+			IloLinearIntExpr sumAllAssignmentsPerStudentPerCourse = assignmentPerStudentCourse(student, course); // Sum of all assignments for this student and this course
+			sumAllAssignmentsPerStudent.add(sumAllAssignmentsPerStudentPerCourse);
+		}
 		
-		for (Student student : students.values()) { // For each student...
-			targetSumOfAllOccupiedTimeslots += student.getTargetSumOfTimeslots();
-			Map<Course, Map<Group, IloIntVar>> courseGroupAssignments = new HashMap<>();
+		return sumAllAssignmentsPerStudent;
+	}
+	
+	private IloLinearIntExpr assignmentPerStudentCourse(Student student, Course course) throws IloException {
+		IloLinearIntExpr sumAllAssignmentsPerStudentPerCourse = cplex.linearIntExpr();
+		
+		Map<Group, IloIntVar> groupAssignments = new HashMap<>();
+		
+		for (Group group : course.getGroups().values()) {
+			IloIntVar studentAssigned = cplex.boolVar("(" + student.getCode() + ": " + course.getCode() + "-" + group.getCode() + ")"); // VARIABLE: student assigned to this course-group pair?
+			sumAllAssignmentsPerStudentPerCourse.addTerm(1, studentAssigned);
 			
-			IloIntVar hasCompleteAssignment = cplex.boolVar("(Complete assignment for " + student.getCode() + ")"); // Boolean variable indicating if this student is assigned to all courses they enrolled in
-			sumAllCompleteAssignments.addTerm(1, hasCompleteAssignment);
+			group.addTermToSumAllAssignedStudents(cplex, studentAssigned);
 			
-			IloLinearIntExpr sumAllGroupAssignments = cplex.linearIntExpr(); // Sum of group assignments for this student
+			groupAssignments.put(group, studentAssigned);
+		}
+		
+		cplex.addLe(sumAllAssignmentsPerStudentPerCourse, 1); // CONSTRAINT: a student can be assigned to at most 1 group per course
+		
+		student.getCourseGroupAssignments().put(course, groupAssignments);
+		
+		return sumAllAssignmentsPerStudentPerCourse;
+	}
+	
+	private void assignmentPerStudentTimeslot(Student student, Timeslot timeslot) throws IloException {
+		IloIntVar timeslotOccupied = cplex.boolVar(); // VARIABLE: student has this timeslot occupied?
+		IloLinearIntExpr sumAllPracticalClasses = cplex.linearIntExpr(); // Sum of all practical classes for this student in this timeslot
+		IloLinearIntExpr sumAllClasses = cplex.linearIntExpr(); // Sum of all classes for this student in this timeslot
+		
+		for (Map.Entry<Course, Set<Group>> practicalClass : timeslot.getPracticalClasses().entrySet()) {
+			Course course = practicalClass.getKey();
 			
-			for (Course course : student.getEnrolledCourses()) { // For each course this student is enrolled in...
-				++numCourseEnrollments;
-				Map<Group, IloIntVar> groupAssignments = new HashMap<>();
-				IloLinearIntExpr sumAllGroupAssignmentsPerCourse = cplex.linearIntExpr(); // Sum of all group assignments for this course for this student
-				
-				for (Group group : course.getGroups().values()) { // For each group...
-					IloIntVar var_assignedToGroup = cplex.boolVar("(" + student.getCode() + ": " + course.getCode() + "-" + group.getCode() + ")"); // VARIABLE: this student is assigned to this group for this course
-					
-					// Add this variable to the sum of all group assignments for this course for this student
-					sumAllGroupAssignmentsPerCourse.addTerm(1, var_assignedToGroup);
-					
-					// Add this variable to the sum of all student assignments for this group for this course
-					group.addTermToConstrSumAssignedStudents(cplex, var_assignedToGroup);
-					
-					// Add this variable to the sum of all group assignments for all students in all courses
-					sumAllGroupAssignmentsAllStudents.addTerm(1, var_assignedToGroup);
-					
-					// Add this variable to this student's personal assignments
-					groupAssignments.put(group, var_assignedToGroup); 
+			if (student.getEnrolledCourses().contains(course)) {
+				for (Group group : practicalClass.getValue()) {
+					IloIntVar assignmentVariable = student.getCourseGroupAssignments().get(course).get(group);
+					if (assignmentVariable != null) sumAllPracticalClasses.addTerm(1, assignmentVariable); // Some groups might have been automatically added to this timeslot since they're part of a composite but in reality this course doesn't have them
 				}
-				
-				cplex.addLe(sumAllGroupAssignmentsPerCourse, 1); // CONSTRAINT: a student can be assigned to at most 1 group per course
-				sumAllGroupAssignments.add(sumAllGroupAssignmentsPerCourse); // Add this course's group assignments to the sum of all group assignments for this student
-				courseGroupAssignments.put(course, groupAssignments);
-			}
-			
-			student.setCourseGroupAssignments(courseGroupAssignments);
-			student.setHasCompleteAssignment(hasCompleteAssignment);
-			
-			// CONSTRAINT: if sum of all assignments for this student < no. of enrolled courses, then they don't have a complete assignment
-			cplex.add(cplex.ifThen(cplex.le(sumAllGroupAssignments, student.getEnrolledCourses().size() - 1), cplex.eq(hasCompleteAssignment, 0)));
-			
-			// Time conflict constraints
-			for (Timeslot timeslot : schedule) { // For each timeslot...
-				IloIntVar hasClassInTimeslot = cplex.boolVar(); // Boolean variable indicating if this student is assigned to at least one group in this timeslot
-				sumAllOccupiedTimeslots.addTerm(1, hasClassInTimeslot);
-				
-				IloLinearIntExpr sumAllPracticalGroupAssignmentsPerTimeslot = cplex.linearIntExpr(); // Sum of all practical group assignments for this timeslot for this student
-				IloLinearIntExpr sumAllGroupAssignmentsPerTimeslot = cplex.linearIntExpr(); // Sum of all group assignments for this timeslot for this student
-				
-				for (Map.Entry<Course, Set<Group>> timeslotCourse : timeslot.getPracticalClasses().entrySet()) { // For each course that has a practical class in this timeslot...
-					if (student.getEnrolledCourses().contains(timeslotCourse.getKey())) { // If this student is enrolled in it...
-						Course course = timeslotCourse.getKey(); // Get the course code
-						Set<Group> groups = timeslotCourse.getValue(); // Get the codes of all taught groups
-						
-						for (Group group : groups) { // For each group of this course taught in this timeslot...
-							IloIntVar temp = courseGroupAssignments.get(course).get(group);
-							if (temp != null) sumAllPracticalGroupAssignmentsPerTimeslot.addTerm(1, temp); // Some groups might have been automatically added to this timeslot since they're part of a composite but in reality this course doesn't have them
-						}
-					}
-				}
-				
-				sumAllGroupAssignmentsPerTimeslot.add(sumAllPracticalGroupAssignmentsPerTimeslot);
-				
-				for (Map.Entry<Course, Set<Group>> timeslotCourse : timeslot.getPracticalClasses().entrySet()) { // For each course that has a lecture class in this timeslot...
-					if (student.getEnrolledCourses().contains(timeslotCourse.getKey())) { // If this student is enrolled in it...
-						Course course = timeslotCourse.getKey(); // Get the course code
-						Set<Group> groups = timeslotCourse.getValue(); // Get the codes of all taught groups
-						
-						for (Group group : groups) { // For each group of this course taught in this timeslot...
-							IloIntVar temp = courseGroupAssignments.get(course).get(group);
-							if (temp != null) sumAllGroupAssignmentsPerTimeslot.addTerm(1, temp); // Some groups might have been automatically added to this timeslot since they're part of a composite but in reality this course doesn't have them
-						}
-					}
-				}
-				
-				cplex.addLe(sumAllPracticalGroupAssignmentsPerTimeslot, 1); // CONSTRAINT: a student can be assigned to at most 1 group with a practical class per timeslot
-				cplex.add(cplex.ifThen(cplex.eq(sumAllGroupAssignmentsPerTimeslot, 0), cplex.eq(hasClassInTimeslot, 0))); // CONSTRAINT: if sum of all assignments for this student for this timeslot = 0, then they don't have classes in this timeslot
 			}
 		}
 		
-		for (Course course : courses.values()) {
-			for (Group group : course.getGroups().values()) {
-				if (!isMandatoryAssignment || course.getMandatory()) {
-					cplex.addLe(group.getConstrSumAssignedStudents(), group.getCapacity()); // CONSTRAINT: the sum of assigned students must not exceed this group's capacity
+		cplex.addLe(sumAllPracticalClasses, 1); // CONSTRAINT: a student can have at most 1 concurrent practical class
+		sumAllClasses.add(sumAllPracticalClasses);
+		
+		for (Map.Entry<Course, Set<Group>> lectureClass : timeslot.getLectureClasses().entrySet()) {
+			Course course = lectureClass.getKey();
+			
+			if (student.getEnrolledCourses().contains(course)) {
+				for (Group group : lectureClass.getValue()) {
+					IloIntVar assignmentVariable = student.getCourseGroupAssignments().get(course).get(group);
+					if (assignmentVariable != null) sumAllClasses.addTerm(1, assignmentVariable); // Some groups might have been automatically added to this timeslot since they're part of a composite but in reality this course doesn't have them
 				}
-				// Else (if we're assigning mandatory courses but this course is optional), don't add a constraint for the group capacity, since we know for sure everyone fits  
 			}
 		}
-
-		IloNumExpr objectiveMaximizeSumAllAssignments = cplex.prod(.1 / numCourseEnrollments, sumAllGroupAssignmentsAllStudents);
-		IloNumExpr objectiveMaximizeCompleteAssignments = cplex.prod(.5 / students.size(), sumAllCompleteAssignments);
-		IloNumExpr objectiveMaximizeOccupiedTimeslots = cplex.prod(.4 / targetSumOfAllOccupiedTimeslots, sumAllOccupiedTimeslots);
-		IloNumExpr objective = cplex.sum(objectiveMaximizeCompleteAssignments, objectiveMaximizeSumAllAssignments, objectiveMaximizeOccupiedTimeslots);
-		cplex.addMaximize(objective); // OBJECTIVE: maximize (.8 * sum of complete assignments / total students) + (.2 * sum of all group assignments / number of course enrollments)
+		
+		cplex.add(cplex.ifThen(cplex.eq(sumAllClasses, 0), cplex.eq(timeslotOccupied, 0))); // CONSTRAINT: if sum of all classes in this timeslot = 0, the timeslot isn't occupied
 	}
 	
 	private void solve() throws IOException, IloException {

@@ -187,7 +187,6 @@ public class InputDataReader {
 			thisPreference.addCourseGroupPair(thisCourse, thisGroup);
 			
 			thisStudent.getEnrolledCourses().add(thisCourse); // Add it to the list of this student's enrollments
-			thisStudent.addToTargetSumOfTimeslots(thisCourse.getWeeklyTimeslots()); // Add this course's weekly number of timeslots to this student's target sum of timeslots
 		}
 		
 		reader.close();

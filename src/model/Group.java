@@ -8,7 +8,7 @@ import ilog.cplex.IloCplex;
 public class Group {
 	private String code;
 	private int capacity;
-	private IloLinearIntExpr constr_sumAssignedStudents; // Sum of all decision variables indicating whether a student has been assigned to this group
+	private IloLinearIntExpr sumAllAssignedStudents; // Sum of all decision variables indicating whether a student has been assigned to this group
 	
 	public Group(String code, int capacity) {
 		this.code = code;
@@ -27,13 +27,13 @@ public class Group {
 		this.capacity = capacity;
 	}
 	
-	public IloLinearIntExpr getConstrSumAssignedStudents() {
-		return constr_sumAssignedStudents;
+	public IloLinearIntExpr getSumAllAssignedStudents() {
+		return sumAllAssignedStudents;
 	}
 	
-	public void addTermToConstrSumAssignedStudents(IloCplex cplex, IloIntVar var_preferenceAssigned) throws IloException {
-		if (constr_sumAssignedStudents == null) constr_sumAssignedStudents = cplex.linearIntExpr();
-		constr_sumAssignedStudents.addTerm(1, var_preferenceAssigned);
+	public void addTermToSumAllAssignedStudents(IloCplex cplex, IloIntVar var_preferenceAssigned) throws IloException {
+		if (sumAllAssignedStudents == null) sumAllAssignedStudents = cplex.linearIntExpr();
+		sumAllAssignedStudents.addTerm(1, var_preferenceAssigned);
 	}
 	
 	@Override
