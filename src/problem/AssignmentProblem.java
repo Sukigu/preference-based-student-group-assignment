@@ -16,6 +16,7 @@ import model.Course;
 import model.Group;
 import model.Schedule;
 import model.Student;
+import model.StudentPreference;
 import model.Timeslot;
 
 public class AssignmentProblem {
@@ -68,13 +69,14 @@ public class AssignmentProblem {
 			student.setHasCompleteAssignment(completeStudent);
 			
 			for (Timeslot timeslot : schedule) {
-				assignmentPerStudentTimeslot(student, timeslot);
+				assignmentPerStudentTimeslot(student, timeslot, sumAllOccupiedTimeslots);
 			}
 		}
 		
 		for (Course course : courses.values()) {
 			for (Group group : course.getGroups().values()) {
 				if (!isMandatoryAssignment || course.getMandatory()) {
+					//if (course.getCode().equals("EIC0105") || course.getCode().equals("EIC0012")) continue; TODO: DEBUG
 					cplex.addLe(group.getSumAllAssignedStudents(), group.getCapacity()); // CONSTRAINT: sum of all assigned students <= group's capacity
 				}
 				// Else (if we're assigning mandatory courses but this course is optional), don't add a constraint for the group capacity, since we know for sure everyone fits
@@ -84,7 +86,34 @@ public class AssignmentProblem {
 		IloNumExpr objMaximizeSumAllAssignments = cplex.prod(1. / numEnrollments, sumAllAssignments);
 		IloNumExpr objMaximizeCompleteStudents = cplex.prod(1. / students.size(), sumAllCompleteStudents);
 		IloNumExpr objMaximizeOccupiedTimeslots = cplex.prod(1. / targetNumOccupiedTimeslots, sumAllOccupiedTimeslots);
-		cplex.addMaximize(cplex.sum(cplex.prod(.1, objMaximizeSumAllAssignments), cplex.prod(.5, objMaximizeCompleteStudents), cplex.prod(.4, objMaximizeOccupiedTimeslots)));
+		/*IloNumExpr objMaximizeFulfilledPreferences = processStudentPreferences();*/
+		cplex.addMaximize(cplex.sum(cplex.prod(.1, objMaximizeSumAllAssignments), cplex.prod(.5, objMaximizeCompleteStudents), cplex.prod(.4, objMaximizeOccupiedTimeslots)/*, cplex.prod(.1, objMaximizeFulfilledPreferences)*/));
+	}
+	
+	private IloNumExpr processStudentPreferences() throws IloException {
+		IloLinearIntExpr sumFulfilledPreferences = cplex.linearIntExpr();
+		
+		for (Student student : students.values()) { // For each student...
+			for (StudentPreference preference : student.getPreferences()) { // For each of their preferences...
+				IloLinearIntExpr sumIndividualGroupAssignments = cplex.linearIntExpr();
+				
+				for (Map.Entry<Course, Group> preferenceCourseGroup : preference.getCourseGroupPairs().entrySet()) { // Get the course-group pair
+					Course preferenceCourse = preferenceCourseGroup.getKey();
+					Group preferenceGroup = preferenceCourseGroup.getValue();
+					
+					IloIntVar groupAssignment = student.getCourseGroupAssignments().get(preferenceCourse).get(preferenceGroup);
+					sumIndividualGroupAssignments.addTerm(1, groupAssignment);
+				}
+				
+				IloIntVar fulfilledPreference = cplex.boolVar("(Complete preference order " + preference.getOrder() + " for " + student.getCode() + ")");
+				sumFulfilledPreferences.addTerm(1, fulfilledPreference);
+				
+				// CONSTRAINT: if sum of all group assignments in this preference < number of course-group pairs in it, then it's not completely fulfilled
+				cplex.add(cplex.ifThen(cplex.le(sumIndividualGroupAssignments, preference.getSize() - 1), cplex.eq(fulfilledPreference, 0)));
+			}
+		}
+		
+		return cplex.prod(1. / students.size(), sumFulfilledPreferences);
 	}
 	
 	private IloLinearIntExpr assignmentPerStudent(Student student) throws IloException {
@@ -122,10 +151,12 @@ public class AssignmentProblem {
 		return sumAllAssignmentsPerStudentPerCourse;
 	}
 	
-	private void assignmentPerStudentTimeslot(Student student, Timeslot timeslot) throws IloException {
+	private void assignmentPerStudentTimeslot(Student student, Timeslot timeslot, IloLinearIntExpr sumAllOccupiedTimeslots) throws IloException {
 		IloIntVar timeslotOccupied = cplex.boolVar(); // VARIABLE: student has this timeslot occupied?
 		IloLinearIntExpr sumAllPracticalClasses = cplex.linearIntExpr(); // Sum of all practical classes for this student in this timeslot
 		IloLinearIntExpr sumAllClasses = cplex.linearIntExpr(); // Sum of all classes for this student in this timeslot
+		
+		sumAllOccupiedTimeslots.addTerm(1, timeslotOccupied);
 		
 		for (Map.Entry<Course, Set<Group>> practicalClass : timeslot.getPracticalClasses().entrySet()) {
 			Course course = practicalClass.getKey();

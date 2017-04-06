@@ -3,23 +3,26 @@ package model;
 import java.util.HashMap;
 import java.util.Map;
 
-import ilog.concert.IloIntVar;
-import model.Group;
+import ilog.concert.IloLinearIntExpr;
 
 public class StudentPreference {
 	private int order;
+	private int size;
 	private Map<Course, Group> courseGroupPairs;
-	private IloIntVar var_preferenceAssigned; // Decision variable to indicate if this preference has been assigned to the student
-	private int weight; // Importance of this specific student preference regarding all other preferences
+	private IloLinearIntExpr sumIndividualGroupAssignments;
 	
 	public StudentPreference(int order) {
 		this.order = order;
+		this.size = 0;
 		this.courseGroupPairs = new HashMap<>();
-		this.weight = 1;
 	}
 	
 	public int getOrder() {
 		return order;
+	}
+	
+	public int getSize() {
+		return size;
 	}
 	
 	public Map<Course, Group> getCourseGroupPairs() {
@@ -28,22 +31,15 @@ public class StudentPreference {
 	
 	public void addCourseGroupPair(Course course, Group group) {
 		courseGroupPairs.put(course, group);
+		size += 1;
 	}
 	
-	public IloIntVar getVarPreferenceAssigned() {
-		return var_preferenceAssigned;
+	public IloLinearIntExpr getSumIndividualGroupAssignments() {
+		return sumIndividualGroupAssignments;
 	}
 	
-	public void setVarPreferenceAssigned(IloIntVar var_preferenceAssigned) {
-		this.var_preferenceAssigned = var_preferenceAssigned;
-	}
-	
-	public int getWeight() {
-		return weight;
-	}
-	
-	public void setWeight(int weight) {
-		this.weight = weight;
+	public void setSumIndividualGroupAssignments(IloLinearIntExpr sumIndividualGroupAssignments) {
+		this.sumIndividualGroupAssignments = sumIndividualGroupAssignments;
 	}
 	
 	@Override
