@@ -48,7 +48,7 @@ public class AssignmentProblem {
 		defineManualAssignmentProblem();
 		solve();
 	}
-
+	
 	private void defineManualAssignmentProblem() throws IloException {
 		IloLinearIntExpr sumAllAssignments = cplex.linearIntExpr(); // Sum of all assignments of all students
 		IloLinearIntExpr sumAllCompleteStudents = cplex.linearIntExpr(); // Number of students who were assigned to all of their courses
@@ -88,7 +88,7 @@ public class AssignmentProblem {
 	
 	private IloLinearIntExpr assignmentPerStudent(Student student) throws IloException {
 		IloLinearIntExpr sumAllAssignmentsPerStudent = cplex.linearIntExpr();
-				
+		
 		for (Course course : student.getEnrolledCourses()) {
 			numEnrollments += 1;
 			targetNumOccupiedTimeslots += course.getWeeklyTimeslots();

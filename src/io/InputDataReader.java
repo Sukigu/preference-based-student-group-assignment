@@ -134,6 +134,7 @@ public class InputDataReader {
 					thisGroup.setCapacity(groupCapacity);
 				}
 				
+				adjust1stYearCapacity(thisGroup);
 				thisCourse.getGroups().put(groupCode, thisGroup);
 				schedule.addCourseGroup(thisCourse, thisGroup, isPracticalClass, weekDay, startTime, duration);
 			}
@@ -147,6 +148,24 @@ public class InputDataReader {
 		}
 		
 		reader.close();
+	}
+	
+	// 1st year students (~117) are distributed through groups 1 to 6. This method makes the necessary adjustment in group capacities
+	private void adjust1stYearCapacity(Group group) {
+		switch (group.getCode()) {
+		case "1MIEIC01":
+		case "1MIEIC02":
+		case "1MIEIC03":
+			group.setCapacity(group.getCapacity() - 20);
+			break;
+		case "1MIEIC04":
+		case "1MIEIC05":
+		case "1MIEIC06":
+			group.setCapacity(group.getCapacity() - 19);
+			break;
+		default:
+			break;
+		}
 	}
 	
 	private void readStudents() throws IOException {
