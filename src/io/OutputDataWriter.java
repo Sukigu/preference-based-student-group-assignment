@@ -4,6 +4,7 @@ import java.io.BufferedWriter;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.OutputStreamWriter;
+import java.util.HashMap;
 import java.util.Map;
 
 import ilog.concert.IloException;
@@ -29,7 +30,43 @@ public class OutputDataWriter {
 		this.outputPath = outputPath;
 	}
 	
+	public void checkGroupCapacities() throws IOException {
+		Map<Course, Integer> courseEnrollments = new HashMap<>(); // Total number of enrolled students per course
+		
+		for (Student student : students.values()) {
+			for (Course enrolledCourse : student.getEnrolledCourses()) {
+				Integer courseEnrollment = courseEnrollments.get(enrolledCourse);
+				if (courseEnrollment == null) courseEnrollment = new Integer(0);
+				
+				courseEnrollment += 1;
+				courseEnrollments.put(enrolledCourse, courseEnrollment);
+			}
+		}
+		
+		String output = "UC;OPTATIVA;VAGAS TOTAIS;ESTUDANTES INSCRITOS;PERCENTAGEM";
+		
+		for (Course course : courses.values()) {
+			Integer enrolledStudents = courseEnrollments.get(course);
+			if (enrolledStudents == null) continue;
+			
+			int totalCapacity = 0;
+			
+			for (Group group : course.getGroups().values()) {
+				totalCapacity += group.getCapacity();
+			}
+			
+			float ratio = (float) totalCapacity / enrolledStudents * 100;
+			
+			if (ratio <= 115) { // If theres little (or no) surplus in group capacity, output to file
+				output += "\r\n" + course.getCode() + ";" + (course.getMandatory() ? "0" : "1") + ";" + totalCapacity + ";" + enrolledStudents + ";" + ratio;
+			}
+		}
+		
+		writeToFile(outputPath + "problemas vagas.csv", output);
+	}
+	
 	public void writeOutputData() throws IloException, IOException {
+		checkGroupCapacities();
 		writeStudentsManualAssignments();
 		writeGroupStats();
 	}

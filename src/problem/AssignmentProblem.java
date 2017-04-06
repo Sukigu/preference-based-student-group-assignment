@@ -23,8 +23,8 @@ public class AssignmentProblem {
 	private Map<String, Course> courses;
 	private Map<String, Student> students;
 	private boolean isMandatoryAssignment;
-	private String outputPath;
 	private IloCplex cplex;
+	private OutputDataWriter writer;
 	
 	private int numEnrollments;
 	private int targetNumOccupiedTimeslots;
@@ -37,14 +37,15 @@ public class AssignmentProblem {
 		this.courses = reader.getCourses();
 		this.students = reader.getStudents();
 		this.isMandatoryAssignment = isMandatoryAssignment;
-		this.outputPath = outputPath;
 		this.cplex = new IloCplex();
+		this.writer = new OutputDataWriter(cplex, cplex.getParam(IloCplex.DoubleParam.EpRHS), courses, students, outputPath);
 		
 		this.numEnrollments = 0;
 		this.targetNumOccupiedTimeslots = 0;
 	}
 	
 	public void run() throws IloException, IOException {
+		writer.checkGroupCapacities();
 		defineManualAssignmentProblem();
 		solve();
 	}
@@ -158,7 +159,6 @@ public class AssignmentProblem {
 		// Solve the problem
 		if (cplex.solve()) {
 			System.out.println("Solution found by CPLEX is " + cplex.getStatus() + ".");
-			OutputDataWriter writer = new OutputDataWriter(cplex, cplex.getParam(IloCplex.DoubleParam.EpRHS), courses, students, outputPath);
 			writer.writeOutputData();
 		}
 		else {
