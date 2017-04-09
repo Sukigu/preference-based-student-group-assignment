@@ -30,8 +30,8 @@ public class AssignmentProblem {
 	private int numEnrollments;
 	private int targetNumOccupiedTimeslots;
 	
-	public AssignmentProblem(String coursesFilename, String groupsFilename, String groupCompositesFilename, String preferencesFilename, String gradesFilename, int semester, String procVersion, boolean isMandatoryAssignment, String outputPath) throws IloException, IOException {
-		InputDataReader reader = new InputDataReader(coursesFilename, groupsFilename, groupCompositesFilename, preferencesFilename, gradesFilename, semester, procVersion);
+	public AssignmentProblem(String coursesFilename, String groupsFilename, String scheduleFilename, String groupCompositesFilename, String preferencesFilename, String gradesFilename, int semester, String procVersion, boolean isMandatoryAssignment, String outputPath) throws IloException, IOException {
+		InputDataReader reader = new InputDataReader(coursesFilename, groupsFilename, scheduleFilename, groupCompositesFilename, preferencesFilename, gradesFilename, semester, procVersion);
 		reader.readData();
 		
 		this.schedule = reader.getSchedule();

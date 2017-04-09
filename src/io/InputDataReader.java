@@ -15,15 +15,16 @@ import model.Student;
 import model.StudentPreference;
 
 public class InputDataReader {
-	private String coursesFilename, groupsFilename, groupCompositesFilename, preferencesFilename, gradesFilename, procVersion;
+	private String coursesFilename, groupsFilename, scheduleFilename, groupCompositesFilename, preferencesFilename, gradesFilename, procVersion;
 	private int semester;
 	private Map<String, Course> courses;
 	private Schedule schedule;
 	private Map<String, Student> students;
 	
-	public InputDataReader(String coursesFilename, String groupsFilename, String groupCompositesFilename, String preferencesFilename, String gradesFilename, int semester, String procVersion) throws IOException {
+	public InputDataReader(String coursesFilename, String groupsFilename, String scheduleFilename, String groupCompositesFilename, String preferencesFilename, String gradesFilename, int semester, String procVersion) throws IOException {
 		this.coursesFilename = coursesFilename;
 		this.groupsFilename = groupsFilename;
+		this.scheduleFilename = scheduleFilename;
 		this.groupCompositesFilename = groupCompositesFilename;
 		this.preferencesFilename = preferencesFilename;
 		this.gradesFilename = gradesFilename;
@@ -36,8 +37,8 @@ public class InputDataReader {
 	
 	public void readData() throws IOException {
 		readCourses();
-		readGroupComposites();
 		readGroups();
+		readSchedule();
 		readStudents();
 		readStudentsGrades();
 	}
@@ -74,6 +75,25 @@ public class InputDataReader {
 		reader.close();
 	}
 	
+	private void readGroups() throws IOException {
+		BufferedReader reader = new BufferedReader(new FileReader(groupsFilename));
+		reader.readLine();
+		String fileLine;
+		
+		while ((fileLine = reader.readLine()) != null) {
+			String[] line = fileLine.split(";");
+			
+			String courseCode = line[0];
+			String groupCode = line[1];
+			int groupCapacity = Integer.parseInt(line[2]);
+			
+			Group thisGroup = new Group(groupCode, groupCapacity);
+			courses.get(courseCode).getGroups().put(groupCode, thisGroup);
+		}
+		
+		reader.close();
+	}
+	
 	private Map<String, Set<String>> readGroupComposites() throws IOException {
 		Map<String, Set<String>> groupComposites = new HashMap<>();
 		
@@ -103,10 +123,10 @@ public class InputDataReader {
 		return groupComposites;
 	}
 	
-	private void readGroups() throws IOException {
+	private void readSchedule() throws IOException {
 		Map<String, Set<String>> groupComposites = readGroupComposites();
 		
-		BufferedReader reader = new BufferedReader(new FileReader(groupsFilename));
+		BufferedReader reader = new BufferedReader(new FileReader(scheduleFilename));
 		reader.readLine();
 		String fileLine;
 		
@@ -119,30 +139,22 @@ public class InputDataReader {
 			int startTime = (int) ((Float.parseFloat(line[3]) - 8) * 2);
 			int duration = (int) (Float.parseFloat(line[4]) * 2);
 			boolean isPracticalClass = line[5].equals("T") ? false : true;
-			int groupCapacity = Integer.parseInt(line[6]);
 			
 			Course thisCourse = courses.get(courseCode);
 			Set<String> groupsFromComposite = groupComposites.get(groupCode);
 			
-			if (groupsFromComposite == null) { // If this is not a group composite, add it to this course and to the schedule
+			if (groupsFromComposite == null) { // If this is not a group composite, add it to the schedule
 				Group thisGroup = thisCourse.getGroups().get(groupCode);
 				
-				if (thisGroup == null) { // (Most likely.) If this is a new group, create it
-					thisGroup = new Group(groupCode, groupCapacity);
-				}
-				else { // If we had needed to lazily create this group before as part of a composite, just fill in the missing information
-					thisGroup.setCapacity(groupCapacity);
-				}
-				
 				adjust1stYearCapacity(thisGroup);
-				thisCourse.getGroups().put(groupCode, thisGroup);
 				schedule.addCourseGroup(thisCourse, thisGroup, isPracticalClass, weekDay, startTime, duration);
 			}
 			else {
-				for (String groupFromComposite : groupsFromComposite) { // If it is, then only add the individual groups to the schedule
+				for (String groupFromComposite : groupsFromComposite) { // If it is, add all the individual groups to the schedule
 					Group thisGroup = thisCourse.getGroups().get(groupFromComposite);
-					if (thisGroup == null) thisGroup = new Group(groupFromComposite, -1); // If the individual group hasn't been created yet, lazily create it now
-					schedule.addCourseGroup(thisCourse, thisGroup, isPracticalClass, weekDay, startTime, duration);
+					if (thisGroup != null) {
+						schedule.addCourseGroup(thisCourse, thisGroup, isPracticalClass, weekDay, startTime, duration);
+					}
 				}
 			}
 		}
