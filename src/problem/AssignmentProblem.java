@@ -76,7 +76,6 @@ public class AssignmentProblem {
 		for (Course course : courses.values()) {
 			for (Group group : course.getGroups().values()) {
 				if (!isMandatoryAssignment || course.getMandatory()) {
-					//if (course.getCode().equals("EIC0105") || course.getCode().equals("EIC0012")) continue; TODO: DEBUG
 					cplex.addLe(group.getSumAllAssignedStudents(), group.getCapacity()); // CONSTRAINT: sum of all assigned students <= group's capacity
 				}
 				// Else (if we're assigning mandatory courses but this course is optional), don't add a constraint for the group capacity, since we know for sure everyone fits
@@ -86,11 +85,11 @@ public class AssignmentProblem {
 		IloNumExpr objMaximizeSumAllAssignments = cplex.prod(1. / numEnrollments, sumAllAssignments);
 		IloNumExpr objMaximizeCompleteStudents = cplex.prod(1. / students.size(), sumAllCompleteStudents);
 		IloNumExpr objMaximizeOccupiedTimeslots = cplex.prod(1. / targetNumOccupiedTimeslots, sumAllOccupiedTimeslots);
-		/*IloNumExpr objMaximizeFulfilledPreferences = processStudentPreferences();*/
-		cplex.addMaximize(cplex.sum(cplex.prod(.1, objMaximizeSumAllAssignments), cplex.prod(.5, objMaximizeCompleteStudents), cplex.prod(.4, objMaximizeOccupiedTimeslots)/*, cplex.prod(.1, objMaximizeFulfilledPreferences)*/));
+		IloNumExpr objMaximizeFulfilledPreferences = cplex.prod(1. / students.size(), processStudentPreferences());
+		cplex.addMaximize(cplex.sum(cplex.prod(.1, objMaximizeSumAllAssignments), cplex.prod(.4, objMaximizeCompleteStudents), cplex.prod(.4, objMaximizeOccupiedTimeslots), cplex.prod(.1, objMaximizeFulfilledPreferences)));
 	}
 	
-	private IloNumExpr processStudentPreferences() throws IloException {
+	private IloLinearIntExpr processStudentPreferences() throws IloException {
 		IloLinearIntExpr sumFulfilledPreferences = cplex.linearIntExpr();
 		
 		for (Student student : students.values()) { // For each student...
@@ -106,6 +105,7 @@ public class AssignmentProblem {
 				}
 				
 				IloIntVar fulfilledPreference = cplex.boolVar("(Complete preference order " + preference.getOrder() + " for " + student.getCode() + ")");
+				preference.setWasFulfilled(fulfilledPreference);
 				sumFulfilledPreferences.addTerm(1, fulfilledPreference);
 				
 				// CONSTRAINT: if sum of all group assignments in this preference < number of course-group pairs in it, then it's not completely fulfilled
@@ -113,7 +113,7 @@ public class AssignmentProblem {
 			}
 		}
 		
-		return cplex.prod(1. / students.size(), sumFulfilledPreferences);
+		return sumFulfilledPreferences;
 	}
 	
 	private IloLinearIntExpr assignmentPerStudent(Student student) throws IloException {

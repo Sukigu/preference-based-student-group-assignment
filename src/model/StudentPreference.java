@@ -3,13 +3,13 @@ package model;
 import java.util.HashMap;
 import java.util.Map;
 
-import ilog.concert.IloLinearIntExpr;
+import ilog.concert.IloIntVar;
 
 public class StudentPreference {
 	private int order;
 	private int size;
 	private Map<Course, Group> courseGroupPairs;
-	private IloLinearIntExpr sumIndividualGroupAssignments;
+	private IloIntVar wasFulfilled; // Boolean variable indicating if this preference was fulfilled in its entirety
 	
 	public StudentPreference(int order) {
 		this.order = order;
@@ -34,12 +34,12 @@ public class StudentPreference {
 		size += 1;
 	}
 	
-	public IloLinearIntExpr getSumIndividualGroupAssignments() {
-		return sumIndividualGroupAssignments;
+	public IloIntVar getWasFulfilled() {
+		return wasFulfilled;
 	}
 	
-	public void setSumIndividualGroupAssignments(IloLinearIntExpr sumIndividualGroupAssignments) {
-		this.sumIndividualGroupAssignments = sumIndividualGroupAssignments;
+	public void setWasFulfilled(IloIntVar wasFulfilled) {
+		this.wasFulfilled = wasFulfilled;
 	}
 	
 	@Override

@@ -14,6 +14,7 @@ import ilog.cplex.IloCplex;
 import model.Course;
 import model.Group;
 import model.Student;
+import model.StudentPreference;
 
 public class OutputDataWriter {
 	private IloCplex cplex;
@@ -66,8 +67,7 @@ public class OutputDataWriter {
 	}
 	
 	public void writeOutputData() throws IloException, IOException {
-		checkGroupCapacities();
-		writeStudentsManualAssignments();
+		writeStudentsAssignments();
 		writeGroupStats();
 	}
 	
@@ -77,10 +77,10 @@ public class OutputDataWriter {
 		writer.close();
 	}
 	
-	private void writeStudentsManualAssignments() throws IloException, IOException {
+	private void writeStudentsAssignments() throws IloException, IOException {
 		String output = "ESTUD_NUM_UNICO_INST;NOME;OPCAO;CODIGO;SIGLA";
 		
-		int courseEnrollments = 0, courseAssignments = 0, completeAssignments = 0, partialAssignments = 0;
+		int courseEnrollments = 0, courseAssignments = 0, completeAssignments = 0, partialAssignments = 0, preferencesFulfilled = 0;
 		
 		for (Student student : students.values()) {
 			int studentEnrollments = 0, studentAssignments = 0;
@@ -115,14 +115,23 @@ public class OutputDataWriter {
 			else if (studentAssignments > 0) {
 				++partialAssignments;
 			}
+			
+			for (StudentPreference preference : student.getPreferences()) {
+				IloIntVar wasFulfilled = preference.getWasFulfilled();
+				
+				if (Math.abs(cplex.getValue(wasFulfilled) - 1) < cplexTolerance) {
+					preferencesFulfilled += 1;
+					break;
+				}
+			}
 		}
 		
 		writeToFile(outputPath + "colocações.csv", output);
 		
-		writeAssignmentStats(courseEnrollments, courseAssignments, students.size(), completeAssignments, partialAssignments);
+		writeAssignmentStats(courseEnrollments, courseAssignments, students.size(), completeAssignments, partialAssignments, preferencesFulfilled);
 	}
 	
-	private void writeAssignmentStats(int courseEnrollments, int courseAssignments, int numStudents, int completeAssignments, int partialAssignments) throws IOException {
+	private void writeAssignmentStats(int courseEnrollments, int courseAssignments, int numStudents, int completeAssignments, int partialAssignments, int preferencesFulfilled) throws IOException {
 		String output = "";
 		
 		output += "Inscrições em UCs: " + courseEnrollments;
@@ -132,6 +141,8 @@ public class OutputDataWriter {
 		output += "\r\n" + "Colocações completas: " + completeAssignments;
 		output += "\r\n" + "Colocações parciais: " + partialAssignments;
 		output += "\r\n" + "Percentagem de colocações completas: " + (float) completeAssignments / numStudents * 100 + "%";
+		output += "\r\n" + "\r\n" + "Preferências satisfeitas: " + preferencesFulfilled;
+		output += "\r\n" + "Percentagem de alunos c/ preferências satisfeitas: " + (float) preferencesFulfilled / numStudents * 100 + "%";
 		output += "\r\n" + "\r\n" + "Inscrições médias por estudante: " + (float) courseEnrollments / numStudents;
 		output += "\r\n" + "Colocações médias por estudante: " + (float) courseAssignments / numStudents;
 		
