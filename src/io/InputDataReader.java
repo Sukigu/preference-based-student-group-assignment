@@ -218,6 +218,7 @@ public class InputDataReader {
 			thisPreference.addCourseGroupPair(thisCourse, thisGroup);
 			
 			thisStudent.getEnrolledCourses().add(thisCourse); // Add it to the list of this student's enrollments
+			thisCourse.incNumEnrollments();
 		}
 		
 		reader.close();
@@ -232,7 +233,7 @@ public class InputDataReader {
 			String[] line = fileLine.split(";");
 			
 			String studentCode = line[0];
-			float studentGrade = line.length == 2 ? Float.parseFloat(line[1]) : 0; // Some students have missing grade information
+			float studentGrade = (line.length == 1 || line[1].equals("0")) ? 1 : Float.parseFloat(line[1]); // Some students have missing grade information
 			
 			Student thisStudent = students.get(studentCode);
 			if (thisStudent != null) { // If the student isn't found, it means they're not being assigned to groups in this process version

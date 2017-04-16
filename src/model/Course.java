@@ -8,12 +8,14 @@ public class Course {
 	private boolean mandatory; // True if mandatory; false if optional
 	private int weeklyTimeslots;
 	private Map<String, Group> groups;
+	private int numEnrollments;
 	
 	public Course(String code, boolean mandatory, int weeklyTimeslots) {
 		this.code = code;
 		this.mandatory = mandatory;
 		this.weeklyTimeslots = weeklyTimeslots;
 		this.groups = new HashMap<>();
+		this.numEnrollments = 0;
 	}
 	
 	public String getCode() {
@@ -30,6 +32,14 @@ public class Course {
 	
 	public Map<String, Group> getGroups() {
 		return groups;
+	}
+	
+	public int getNumEnrollments() {
+		return numEnrollments;
+	}
+	
+	public void incNumEnrollments() {
+		numEnrollments += 1;
 	}
 	
 	public int calculateSumGroupCapacities() {
