@@ -32,6 +32,16 @@ public class Course {
 		return groups;
 	}
 	
+	public int calculateSumGroupCapacities() {
+		int sumGroupCapacities = 0;
+		
+		for (Group group : groups.values()) {
+			sumGroupCapacities += group.getCapacity();
+		}
+		
+		return sumGroupCapacities;
+	}
+	
 	@Override
 	public boolean equals(Object obj) {
 		if (obj instanceof Course) {

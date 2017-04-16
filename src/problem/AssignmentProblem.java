@@ -11,6 +11,7 @@ import ilog.concert.IloLinearIntExpr;
 import ilog.concert.IloLinearIntExprIterator;
 import ilog.concert.IloLinearNumExpr;
 import ilog.concert.IloNumExpr;
+import ilog.concert.IloNumVar;
 import ilog.cplex.IloCplex;
 import io.InputDataReader;
 import io.OutputDataWriter;
@@ -56,6 +57,7 @@ public class AssignmentProblem {
 		IloLinearNumExpr weightedSumAllCompleteStudents = cplex.linearNumExpr(); // Summation of all variables indicating a student assigned to all of their courses multiplied by their grade
 		IloLinearNumExpr weightedSumFulfilledPreferences = cplex.linearNumExpr(); // Summation of all variables indicating a student preference fulfilled multiplied by their grade
 		IloLinearIntExpr sumAllOccupiedTimeslots = cplex.linearIntExpr(); // Sum of all timeslots occupied individually by all students
+		IloLinearNumExpr sumAllGroupUtilizationSlacks = cplex.linearNumExpr(); // Sum of all group utilization slack variables for the group balance soft constraint
 		
 		float sumEnrollmentsTimesAvgGrade = 0; // Summation of each student's number of course enrollments multiplied by their grade
 		float sumAvgGrades = 0; // Sum of every student's grade
@@ -88,12 +90,30 @@ public class AssignmentProblem {
 			sumAvgGrades += avgGrade;
 		}
 		
+		int numStudents = students.size();
+		
 		for (Course course : courses.values()) {
+			int sumGroupCapacities = course.calculateSumGroupCapacities();
+			
 			for (Group group : course.getGroups().values()) {
+				IloLinearIntExpr sumAllAssignedStudents = group.getSumAllAssignedStudents();
+				int groupCapacity = group.getCapacity();
+				
+				if (sumAllAssignedStudents == null) continue; // Some courses might not have enrolled students
+				
 				if (!isMandatoryAssignment || course.getMandatory()) {
-					cplex.addLe(group.getSumAllAssignedStudents(), group.getCapacity()); // CONSTRAINT: sum of all assigned students <= group's capacity
+					cplex.addLe(sumAllAssignedStudents, groupCapacity); // CONSTRAINT: sum of all assigned students <= group's capacity
 				}
 				// Else (if we're assigning mandatory courses but this course is optional), don't add a constraint for the group capacity, since we know for sure everyone fits
+
+				float groupMinCapacityUtilization = group.getMinCapacityUtilization();
+				float targetNumStudentsAssigned = groupMinCapacityUtilization * groupCapacity / sumGroupCapacities * numStudents;
+				IloNumVar groupUtilizationSlack = cplex.numVar(0, targetNumStudentsAssigned);
+				
+				sumAllGroupUtilizationSlacks.addTerm(1, groupUtilizationSlack);
+				
+				// SOFT CONSTRAINT: try to balance students assigned to groups according to each group's target minimum utilization of the total group capacities for the same course
+				cplex.addGe(cplex.sum(sumAllAssignedStudents, groupUtilizationSlack), targetNumStudentsAssigned);
 			}
 		}
 		
@@ -101,7 +121,8 @@ public class AssignmentProblem {
 		IloNumExpr objMaximizeCompleteStudents = cplex.prod(1. / sumAvgGrades, weightedSumAllCompleteStudents);
 		IloNumExpr objMaximizeOccupiedTimeslots = cplex.prod(1. / targetNumOccupiedTimeslots, sumAllOccupiedTimeslots);
 		IloNumExpr objMaximizeFulfilledPreferences = cplex.prod(1. / sumAvgGrades, weightedSumFulfilledPreferences);
-		cplex.addMaximize(cplex.sum(cplex.prod(.1, objMaximizeSumAllAssignments), cplex.prod(.4, objMaximizeCompleteStudents), cplex.prod(.4, objMaximizeOccupiedTimeslots), cplex.prod(.1, objMaximizeFulfilledPreferences)));
+		IloNumExpr objMinimizeGroupUtilizationSlacks = cplex.prod(-1, sumAllGroupUtilizationSlacks);
+		cplex.addMaximize(cplex.sum(cplex.prod(.1, objMaximizeSumAllAssignments), cplex.prod(.4, objMaximizeCompleteStudents), cplex.prod(.4, objMaximizeOccupiedTimeslots), cplex.prod(.1, objMaximizeFulfilledPreferences), objMinimizeGroupUtilizationSlacks));
 	}
 	
 	private IloLinearIntExpr processStudentAssignments(Student student) throws IloException {
