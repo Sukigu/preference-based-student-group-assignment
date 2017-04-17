@@ -3,8 +3,10 @@ package io;
 import java.io.BufferedReader;
 import java.io.FileReader;
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 
@@ -40,6 +42,7 @@ public class InputDataReader {
 		readGroups();
 		readSchedule();
 		readStudents();
+		removeDuplicatePreferences();
 		readStudentsGrades();
 	}
 	
@@ -87,7 +90,7 @@ public class InputDataReader {
 			String groupCode = line[1];
 			int groupCapacity = Integer.parseInt(line[2]);
 			
-			Group thisGroup = new Group(groupCode, groupCapacity, .2f);
+			Group thisGroup = new Group(groupCode, groupCapacity, .8f);
 			courses.get(courseCode).getGroups().put(groupCode, thisGroup);
 		}
 		
@@ -222,6 +225,22 @@ public class InputDataReader {
 		}
 		
 		reader.close();
+	}
+	
+	private void removeDuplicatePreferences() {
+		for (Student student : students.values()) {
+			List<StudentPreference> preferences = student.getPreferences();
+			List<StudentPreference> preferencesWithoutDuplicates = new ArrayList<>();
+			
+			for (StudentPreference preference : preferences) {
+				if (!preferencesWithoutDuplicates.contains(preference)) {
+					preferencesWithoutDuplicates.add(preference);
+					preference.setOrder(preferencesWithoutDuplicates.size());
+				}
+			}
+			
+			student.setPreferences(preferencesWithoutDuplicates);
+		}
 	}
 	
 	private void readStudentsGrades() throws IOException {

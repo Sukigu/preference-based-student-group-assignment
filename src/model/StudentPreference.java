@@ -21,6 +21,10 @@ public class StudentPreference {
 		return order;
 	}
 	
+	public void setOrder(int order) {
+		this.order = order;
+	}
+	
 	public int getSize() {
 		return size;
 	}
@@ -45,7 +49,9 @@ public class StudentPreference {
 	@Override
 	public boolean equals(Object obj) {
 		if (obj instanceof StudentPreference) {
-			return ((StudentPreference) obj).order == order;
+			StudentPreference otherPreference = (StudentPreference) obj;
+			
+			return otherPreference.courseGroupPairs.equals(courseGroupPairs);
 		}
 		else return false;
 	}

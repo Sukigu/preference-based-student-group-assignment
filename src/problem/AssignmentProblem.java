@@ -76,6 +76,7 @@ public class AssignmentProblem {
 			
 			IloIntVar completeStudent = cplex.boolVar("(Complete assignment for " + student.getCode() + ")"); // VARIABLE: student was assigned to all of their courses?
 			cplex.add(cplex.ifThen(cplex.le(sumAllAssignmentsPerStudent, student.getEnrolledCourses().size() - 1), cplex.eq(completeStudent, 0))); // CONSTRAINT: if sum of all assignments < number of enrolled courses, then it's not a complete assignment
+			cplex.add(cplex.ifThen(cplex.eq(sumAllAssignmentsPerStudent, student.getEnrolledCourses().size()), cplex.eq(completeStudent, 1))); // CONSTRAINT: if sum of all assignments = number of enrolled courses, then it is a complete assignment
 			
 			weightedSumAllCompleteStudents.addTerm(avgGrade, completeStudent);
 			student.setHasCompleteAssignment(completeStudent); // Set this student's complete status variable
@@ -188,6 +189,8 @@ public class AssignmentProblem {
 		
 		// CONSTRAINT: if sum of all group assignments in this preference < number of course-group pairs in it, then it's not completely fulfilled
 		cplex.add(cplex.ifThen(cplex.le(sumIndividualGroupAssignments, preference.getSize() - 1), cplex.eq(fulfilledPreference, 0)));
+		// CONSTRAINT: if sum of all group assignments in this preference = number of course-group pairs in it, then it is completely fulfilled
+		cplex.add(cplex.ifThen(cplex.eq(sumIndividualGroupAssignments, preference.getSize()), cplex.eq(fulfilledPreference, 1)));
 	}
 	
 	private void processStudentTimeslots(Student student, Timeslot timeslot, IloLinearIntExpr sumAllOccupiedTimeslots) throws IloException {
@@ -223,10 +226,11 @@ public class AssignmentProblem {
 		}
 		
 		cplex.add(cplex.ifThen(cplex.eq(sumAllClasses, 0), cplex.eq(timeslotOccupied, 0))); // CONSTRAINT: if sum of all classes in this timeslot = 0, the timeslot isn't occupied
+		cplex.add(cplex.ifThen(cplex.not(cplex.eq(sumAllClasses, 0)), cplex.eq(timeslotOccupied, 1))); // CONSTRAINT: if sum of all classes in this timeslot != 0, the timeslot is occupied
 	}
 	
 	private void solve() throws IOException, IloException {
-		cplex.setParam(IloCplex.DoubleParam.TiLim, 1500); // Set timeout to 25 min
+		cplex.setParam(IloCplex.DoubleParam.TiLim, 300 /*1500*/); // Set timeout in seconds
 		
 		// Solve the problem
 		if (cplex.solve()) {
