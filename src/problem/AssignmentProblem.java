@@ -126,7 +126,7 @@ public class AssignmentProblem {
 		IloNumExpr objMaximizeCompleteStudents = (sumAvgGrades != 0) ? cplex.prod(1. / sumAvgGrades, weightedSumAllCompleteStudents) : cplex.constant(1);
 		IloNumExpr objMaximizeOccupiedTimeslots = (targetNumOccupiedTimeslots != 0) ? cplex.prod(1. / targetNumOccupiedTimeslots, sumAllOccupiedTimeslots) : cplex.constant(1);
 		IloNumExpr objMaximizeFulfilledPreferences = (sumAvgGrades != 0) ? cplex.prod(1. / sumAvgGrades, weightedSumFulfilledPreferences) : cplex.constant(1);
-		IloNumExpr objMinimizeGroupUtilizationSlacks = (sumTargetNumStudentsAssignedToGroups != 0) ? cplex.prod(-1. / sumTargetNumStudentsAssignedToGroups, sumAllGroupUtilizationSlacks) : cplex.constant(1);
+		IloNumExpr objMinimizeGroupUtilizationSlacks = (sumTargetNumStudentsAssignedToGroups != 0) ? cplex.sum(1, cplex.prod(-1. / sumTargetNumStudentsAssignedToGroups, sumAllGroupUtilizationSlacks)) : cplex.constant(1);
 		cplex.addMaximize(cplex.sum(cplex.prod(.2, objMaximizeSumAllAssignments), cplex.prod(.2, objMaximizeCompleteStudents), cplex.prod(.2, objMaximizeOccupiedTimeslots), cplex.prod(.2, objMaximizeFulfilledPreferences),  cplex.prod(.2, objMinimizeGroupUtilizationSlacks)));
 		
 		// TODO: DEBUG

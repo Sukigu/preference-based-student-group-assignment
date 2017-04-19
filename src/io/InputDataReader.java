@@ -42,8 +42,8 @@ public class InputDataReader {
 		readGroups();
 		readSchedule();
 		readStudents();
-		removeDuplicatePreferences();
-		readStudentsGrades();
+		readStudentsGrades();		
+		makeStudentsAdjustments();
 	}
 	
 	public Map<String, Course> getCourses() {
@@ -69,7 +69,7 @@ public class InputDataReader {
 			if (!((semester == 1 && line[3].equals("1S")) || (semester == 2 && line[3].equals("2S")))) continue;
 			
 			String courseCode = line[0];
-			int weeklyTimeslots = Integer.parseInt(line[4]);
+			int weeklyTimeslots = Integer.parseInt(line[4]) * 2; // Input data is in hours (2*timeslots)
 			boolean mandatory = (Integer.parseInt(line[5]) == 0) ? true : false;
 			
 			courses.put(courseCode, new Course(courseCode, mandatory, weeklyTimeslots));
@@ -90,7 +90,7 @@ public class InputDataReader {
 			String groupCode = line[1];
 			int groupCapacity = Integer.parseInt(line[2]);
 			
-			Group thisGroup = new Group(groupCode, groupCapacity, .8f);
+			Group thisGroup = new Group(groupCode, groupCapacity, 1f);
 			courses.get(courseCode).getGroups().put(groupCode, thisGroup);
 		}
 		
@@ -165,7 +165,7 @@ public class InputDataReader {
 		reader.close();
 	}
 	
-	// 1st year students (~117) are distributed through groups 1 to 6. This method makes the necessary adjustment in group capacities
+	// 1st year students (~117) are manually distributed through groups 1 to 6. This method makes the necessary adjustment in group capacities
 	private void adjust1stYearCapacity(Group group) {
 		switch (group.getCode()) {
 		case "1MIEIC01":
@@ -221,14 +221,14 @@ public class InputDataReader {
 			thisPreference.addCourseGroupPair(thisCourse, thisGroup);
 			
 			thisStudent.getEnrolledCourses().add(thisCourse); // Add it to the list of this student's enrollments
-			thisCourse.incNumEnrollments();
 		}
 		
 		reader.close();
 	}
 	
-	private void removeDuplicatePreferences() {
+	private void makeStudentsAdjustments() {
 		for (Student student : students.values()) {
+			// Remove duplicate preferences
 			List<StudentPreference> preferences = student.getPreferences();
 			List<StudentPreference> preferencesWithoutDuplicates = new ArrayList<>();
 			
@@ -240,6 +240,11 @@ public class InputDataReader {
 			}
 			
 			student.setPreferences(preferencesWithoutDuplicates);
+			
+			// Count each course's number of students enrolled
+			for (Course course : student.getEnrolledCourses()) {
+				course.incNumEnrollments();
+			}
 		}
 	}
 	
