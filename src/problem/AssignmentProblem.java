@@ -37,7 +37,7 @@ public class AssignmentProblem {
 	public AssignmentProblem(String coursesFilename, String groupsFilename, String scheduleFilename, String groupCompositesFilename, String preferencesFilename, String gradesFilename, int semester, String procVersion, boolean isMandatoryAssignment, String outputPath) throws IloException, IOException {
 		InputDataReader reader = new InputDataReader(coursesFilename, groupsFilename, scheduleFilename, groupCompositesFilename, preferencesFilename, gradesFilename, semester, procVersion);
 		reader.readData();
-
+		
 		this.courses = reader.getCourses();
 		this.schedule = reader.getSchedule();
 		this.students = reader.getStudents();
@@ -82,7 +82,7 @@ public class AssignmentProblem {
 			student.setHasCompleteAssignment(completeStudent); // Set this student's complete status variable
 			
 			for (StudentPreference preference : student.getPreferences()) {
-				processStudentPreferences(student, preference, weightedSumFulfilledPreferences);
+				processStudentPreferences(student, preference, sumAllAssignmentsPerStudent, weightedSumFulfilledPreferences);
 			}
 			
 			for (Timeslot timeslot : schedule) {
@@ -109,7 +109,7 @@ public class AssignmentProblem {
 					cplex.addLe(sumAllAssignedStudents, groupCapacity); // CONSTRAINT: sum of all assigned students <= group's capacity
 				}
 				// Else (if we're assigning mandatory courses but this course is optional), don't add a constraint for the group capacity, since we know for sure everyone fits
-
+				
 				float groupMinCapacityUtilization = group.getMinCapacityUtilization();
 				float targetNumStudentsAssigned = groupMinCapacityUtilization * groupCapacity / sumGroupCapacities * numEnrolledStudents;
 				IloNumVar groupUtilizationSlack = cplex.numVar(0, targetNumStudentsAssigned);
@@ -172,7 +172,9 @@ public class AssignmentProblem {
 		return sumAllAssignmentsPerStudentPerCourse;
 	}
 	
-	private void processStudentPreferences(Student student, StudentPreference preference, IloLinearNumExpr weightedSumFulfilledPreferences) throws IloException {
+	private void processStudentPreferences(Student student, StudentPreference preference, IloLinearIntExpr sumAllAssignmentsPerStudent, IloLinearNumExpr weightedSumFulfilledPreferences) throws IloException {
+		int preferenceOrder = preference.getOrder();
+		int preferenceSize = preference.getSize();
 		IloLinearIntExpr sumIndividualGroupAssignments = cplex.linearIntExpr();
 		
 		for (Map.Entry<Course, Group> preferenceCourseGroup : preference.getCourseGroupPairs().entrySet()) { // Get the course-group pair
@@ -183,14 +185,25 @@ public class AssignmentProblem {
 			sumIndividualGroupAssignments.addTerm(1, groupAssignment);
 		}
 		
-		IloIntVar fulfilledPreference = cplex.boolVar("(Complete preference order " + preference.getOrder() + " for " + student.getCode() + ")");
+		IloIntVar fulfilledPreference = cplex.boolVar("(Complete preference order " + preferenceOrder + " for " + student.getCode() + ")");
 		preference.setWasFulfilled(fulfilledPreference);
-		weightedSumFulfilledPreferences.addTerm(student.getAvgGrade() - (preference.getOrder() - 1) / 9., fulfilledPreference);
+		weightedSumFulfilledPreferences.addTerm(student.getAvgGrade() - (preferenceOrder - 1) / 9., fulfilledPreference);
 		
-		// CONSTRAINT: if sum of all group assignments in this preference < number of course-group pairs in it, then it's not completely fulfilled
-		cplex.add(cplex.ifThen(cplex.le(sumIndividualGroupAssignments, preference.getSize() - 1), cplex.eq(fulfilledPreference, 0)));
-		// CONSTRAINT: if sum of all group assignments in this preference = number of course-group pairs in it, then it is completely fulfilled
-		cplex.add(cplex.ifThen(cplex.eq(sumIndividualGroupAssignments, preference.getSize()), cplex.eq(fulfilledPreference, 1)));
+		// CONSTRAINT: if sum of all assignments in this preference < number of course-group pairs in it
+		// or sum of all assignments in this preference < sum of the student's total assignments,
+		// then it's not completely fulfilled
+		cplex.add(cplex.ifThen(cplex.or(
+				cplex.le(sumIndividualGroupAssignments, preferenceSize - 1),
+				cplex.le(sumIndividualGroupAssignments, cplex.sum(sumAllAssignmentsPerStudent, -1))),
+				cplex.eq(fulfilledPreference, 0)));
+		
+		/*// CONSTRAINT: if sum of all assignments in this preference = number of course-group pairs in it
+		// and sum of all assignments in this preference = sum of the student's total assignments,
+		// then it is completely fulfilled
+		cplex.add(cplex.ifThen(cplex.and(
+				cplex.eq(sumIndividualGroupAssignments, preferenceSize),
+				cplex.eq(sumIndividualGroupAssignments, sumAllAssignmentsPerStudent)),
+				cplex.eq(fulfilledPreference, 1)));*/
 	}
 	
 	private void processStudentTimeslots(Student student, Timeslot timeslot, IloLinearIntExpr sumAllOccupiedTimeslots) throws IloException {

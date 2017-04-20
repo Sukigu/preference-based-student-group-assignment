@@ -15,6 +15,7 @@ public class Student {
 	private float avgGrade;
 	private List<StudentPreference> preferences;
 	private Set<Course> enrolledCourses; // List of the mandatory courses this student enrolled in
+	
 	private Map<Course, Map<Group, IloIntVar>> courseGroupAssignments; // Course code -> (group code -> (boolean variable indicating assignment))
 	private IloIntVar hasCompleteAssignment; // Boolean variable indicating if this student was assigned to all courses they enrolled in
 	
