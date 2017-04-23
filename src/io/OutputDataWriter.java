@@ -150,13 +150,13 @@ public class OutputDataWriter {
 	}
 	
 	private void writeGroupStats() throws IloException, IOException {
-		String output = "UC;TURMA;COLOCADOS;CAPACIDADE";
+		String output = "UC;TURMA;COLOCADOS;CAPACIDADE;OPTATIVA";
 		
 		for (Course course : courses.values()) {
 			for (Group group : course.getGroups().values()) {
 				IloLinearIntExpr numStudentsAssigned = group.getSumAllAssignedStudents();
 				
-				output += "\r\n" + course.getCode() + ";" + group.getCode() + ";" + (numStudentsAssigned != null ? (int) cplex.getValue(numStudentsAssigned) : 0) + ";" + group.getCapacity();
+				output += "\r\n" + course.getCode() + ";" + group.getCode() + ";" + (numStudentsAssigned != null ? (int) cplex.getValue(numStudentsAssigned) : 0) + ";" + group.getCapacity() + ";" + (course.getMandatory() ? "0" : "1");
 			}
 		}
 		
