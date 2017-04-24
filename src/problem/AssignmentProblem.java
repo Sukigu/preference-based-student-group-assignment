@@ -82,11 +82,11 @@ public class AssignmentProblem {
 			student.setHasCompleteAssignment(completeStudent); // Set this student's complete status variable
 			
 			for (StudentPreference preference : student.getPreferences()) {
-				processStudentPreferences(student, preference, sumAllAssignmentsPerStudent, weightedSumFulfilledPreferences);
+				processStudentPreferences(student, preference, sumAllAssignmentsPerStudent);
 			}
 			
 			for (Timeslot timeslot : schedule) {
-				processStudentTimeslots(student, timeslot, sumAllOccupiedTimeslots);
+				processStudentTimeslots(student, timeslot);
 			}
 			
 			sumEnrollmentsTimesAvgGrade += student.getEnrolledCourses().size() * avgGrade;
@@ -125,11 +125,11 @@ public class AssignmentProblem {
 		IloNumExpr objMaximizeSumAllAssignments = (sumEnrollmentsTimesAvgGrade != 0) ? cplex.prod(1. / sumEnrollmentsTimesAvgGrade, weightedSumAllAssignments) : cplex.constant(1);
 		IloNumExpr objMaximizeCompleteStudents = (sumAvgGrades != 0) ? cplex.prod(1. / sumAvgGrades, weightedSumAllCompleteStudents) : cplex.constant(1);
 		IloNumExpr objMaximizeOccupiedTimeslots = (targetNumOccupiedTimeslots != 0) ? cplex.prod(1. / targetNumOccupiedTimeslots, sumAllOccupiedTimeslots) : cplex.constant(1);
-		IloNumExpr objMaximizeFulfilledPreferences = (sumAvgGrades != 0) ? cplex.prod(1. / sumAvgGrades, weightedSumFulfilledPreferences) : cplex.constant(1);
+		IloNumExpr objMaximizeFulfilledPreferences = (sumAvgGrades != 0) ? cplex.prod(1. / (sumAvgGrades * 10), weightedSumFulfilledPreferences) : cplex.constant(1);
 		IloNumExpr objMinimizeGroupUtilizationSlacks = (sumTargetNumStudentsAssignedToGroups != 0) ? cplex.sum(1, cplex.prod(-1. / sumTargetNumStudentsAssignedToGroups, sumAllGroupUtilizationSlacks)) : cplex.constant(1);
 		
 		if (isMandatoryAssignment) {
-			cplex.addMaximize(cplex.sum(cplex.prod(.2, objMaximizeSumAllAssignments), cplex.prod(.2, objMaximizeCompleteStudents), cplex.prod(.2, objMaximizeOccupiedTimeslots), cplex.prod(.2, objMaximizeFulfilledPreferences),  cplex.prod(.2, objMinimizeGroupUtilizationSlacks)));
+			cplex.addMaximize(cplex.sum(cplex.prod(.175, objMaximizeSumAllAssignments), cplex.prod(.175, objMaximizeCompleteStudents), cplex.prod(.175, objMaximizeOccupiedTimeslots), cplex.prod(.3, objMaximizeFulfilledPreferences),  cplex.prod(.175, objMinimizeGroupUtilizationSlacks)));
 		}
 		else {
 			cplex.addMaximize(objMaximizeFulfilledPreferences);
@@ -139,7 +139,7 @@ public class AssignmentProblem {
 		System.out.println("sumEnrollmentsTimesAvgGrade = " + sumEnrollmentsTimesAvgGrade);
 		System.out.println("sumAvgGrades = " + sumAvgGrades);
 		System.out.println("targetNumOccupiedTimeslots = " + targetNumOccupiedTimeslots);
-		System.out.println("sumAvgGrades = " + sumAvgGrades);
+		System.out.println("sumAvgGrades * 10 = " + sumAvgGrades * 10);
 		System.out.println("sumTargetNumStudentsAssignedToGroups = " + sumTargetNumStudentsAssignedToGroups);
 		System.out.println();
 	}
@@ -178,7 +178,7 @@ public class AssignmentProblem {
 		return sumAllAssignmentsPerStudentPerCourse;
 	}
 	
-	private void processStudentPreferences(Student student, StudentPreference preference, IloLinearIntExpr sumAllAssignmentsPerStudent, IloLinearNumExpr weightedSumFulfilledPreferences) throws IloException {
+	private void processStudentPreferences(Student student, StudentPreference preference, IloLinearIntExpr sumAllAssignmentsPerStudent) throws IloException {
 		int preferenceOrder = preference.getOrder();
 		int preferenceSize = preference.getSize();
 		IloLinearIntExpr sumIndividualGroupAssignments = cplex.linearIntExpr();
@@ -193,7 +193,8 @@ public class AssignmentProblem {
 		
 		IloIntVar fulfilledPreference = cplex.boolVar("(Complete preference order " + preferenceOrder + " for " + student.getCode() + ")");
 		preference.setWasFulfilled(fulfilledPreference);
-		weightedSumFulfilledPreferences.addTerm(student.getAvgGrade() - (preferenceOrder - 1) / 9., fulfilledPreference);
+		/*weightedSumFulfilledPreferences.addTerm(student.getAvgGrade() - (preferenceOrder - 1) / 9., fulfilledPreference);*/
+		weightedSumFulfilledPreferences.addTerm(student.getAvgGrade() * (10 - (preferenceOrder - 1)), fulfilledPreference);
 		
 		// CONSTRAINT: if sum of all assignments in this preference < number of course-group pairs in it
 		// or sum of all assignments in this preference < sum of the student's total assignments,
@@ -212,7 +213,7 @@ public class AssignmentProblem {
 				cplex.eq(fulfilledPreference, 1)));*/
 	}
 	
-	private void processStudentTimeslots(Student student, Timeslot timeslot, IloLinearIntExpr sumAllOccupiedTimeslots) throws IloException {
+	private void processStudentTimeslots(Student student, Timeslot timeslot) throws IloException {
 		IloIntVar timeslotOccupied = cplex.boolVar(); // VARIABLE: student has this timeslot occupied?
 		IloLinearIntExpr sumAllPracticalClasses = cplex.linearIntExpr(); // Sum of all practical classes for this student in this timeslot
 		IloLinearIntExpr sumAllClasses = cplex.linearIntExpr(); // Sum of all classes for this student in this timeslot

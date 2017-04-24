@@ -78,11 +78,23 @@ public class OutputDataWriter {
 	}
 	
 	private void writeStudentsAssignments() throws IloException, IOException {
-		String output = "ESTUD_NUM_UNICO_INST;NOME;OPCAO;CODIGO;SIGLA";
+		String output = "ESTUD_NUM_UNICO_INST;NOME;MEDIA;OPCAO;CODIGO;SIGLA";
 		
 		int courseEnrollments = 0, courseAssignments = 0, completeAssignments = 0, partialAssignments = 0, preferencesFulfilled = 0;
 		
 		for (Student student : students.values()) {
+			int fulfilledPreference = -1;
+			
+			for (StudentPreference preference : student.getPreferences()) {
+				IloIntVar wasFulfilled = preference.getWasFulfilled();
+				
+				if (Math.abs(cplex.getValue(wasFulfilled) - 1) < cplexTolerance) {
+					preferencesFulfilled += 1;
+					fulfilledPreference = preference.getOrder();
+					break;
+				}
+			}
+			
 			int studentEnrollments = 0, studentAssignments = 0;
 			
 			for (Map.Entry<Course, Map<Group, IloIntVar>> courseEntry : student.getCourseGroupAssignments().entrySet()) {
@@ -96,7 +108,7 @@ public class OutputDataWriter {
 						++courseAssignments; ++studentAssignments;
 						Group group = groupEntry.getKey();
 						
-						output += "\r\n" + student.getCode() + ";" + student.getName() + ";" + "-1" + ";" + course.getCode() + ";" + group.getCode();
+						output += "\r\n" + student.getCode() + ";" + student.getName() + ";" + student.getAvgGrade() + ";" + fulfilledPreference + ";" + course.getCode() + ";" + group.getCode();
 						
 						break; // A student can't be assigned to more than one group per course, so the loop can be terminated
 					}
@@ -114,15 +126,6 @@ public class OutputDataWriter {
 			}
 			else if (studentAssignments > 0) {
 				++partialAssignments;
-			}
-			
-			for (StudentPreference preference : student.getPreferences()) {
-				IloIntVar wasFulfilled = preference.getWasFulfilled();
-				
-				if (Math.abs(cplex.getValue(wasFulfilled) - 1) < cplexTolerance) {
-					preferencesFulfilled += 1;
-					break;
-				}
 			}
 		}
 		
