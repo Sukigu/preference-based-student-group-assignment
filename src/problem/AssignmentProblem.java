@@ -65,60 +65,24 @@ public class AssignmentProblem {
 		float sumAvgGrades = 0; // Sum of every student's grade
 		
 		for (Student student : students.values()) {
-			float avgGrade = student.getAvgGrade();
-			IloLinearIntExpr sumAllAssignmentsPerStudent = processStudentAssignments(student); // Sum of all assignments for this student
+			processStudent(student);
 			
-			IloLinearIntExprIterator studentAssignmentsIterator = sumAllAssignmentsPerStudent.linearIterator();
-			while (studentAssignmentsIterator.hasNext()) { // Iterating over this student's assignment variables to add them to the objective function multiplied by their grade
-				IloIntVar studentAssignment = studentAssignmentsIterator.nextIntVar();
-				weightedSumAllAssignments.addTerm(avgGrade, studentAssignment);
-			}
-			
-			IloIntVar completeStudent = cplex.boolVar("(Complete assignment for " + student.getCode() + ")"); // VARIABLE: student was assigned to all of their courses?
-			cplex.add(cplex.ifThen(cplex.le(sumAllAssignmentsPerStudent, student.getEnrolledCourses().size() - 1), cplex.eq(completeStudent, 0))); // CONSTRAINT: if sum of all assignments < number of enrolled courses, then it's not a complete assignment
-			cplex.add(cplex.ifThen(cplex.eq(sumAllAssignmentsPerStudent, student.getEnrolledCourses().size()), cplex.eq(completeStudent, 1))); // CONSTRAINT: if sum of all assignments = number of enrolled courses, then it is a complete assignment
-			
-			weightedSumAllCompleteStudents.addTerm(avgGrade, completeStudent);
-			student.setHasCompleteAssignment(completeStudent); // Set this student's complete status variable
-			
-			for (StudentPreference preference : student.getPreferences()) {
-				processStudentPreferences(student, preference, sumAllAssignmentsPerStudent);
-			}
-			
-			for (Timeslot timeslot : schedule) {
-				processStudentTimeslots(student, timeslot);
-			}
-			
-			sumEnrollmentsTimesAvgGrade += student.getEnrolledCourses().size() * avgGrade;
-			sumAvgGrades += avgGrade;
+			sumEnrollmentsTimesAvgGrade += student.getEnrolledCourses().size() * student.getAvgGrade();
+			sumAvgGrades += student.getAvgGrade();
 		}
 		
-		float sumTargetNumStudentsAssignedToGroups = 0;
+		float sumTargetNumStudentsAssigned = 0;
 		
-		for (Course course : courses.values()) {
-			int numEnrolledStudents = course.getNumEnrollments();
-			int sumGroupCapacities = course.calculateSumGroupCapacities();
-			
-			for (Group group : course.getGroups().values()) {
-				IloLinearIntExpr sumAllAssignedStudents = group.getSumAllAssignedStudents();
-				int groupCapacity = group.getCapacity();
-				
-				if (sumAllAssignedStudents == null) continue; // Some courses might not have enrolled students
-				
-				if (!isMandatoryAssignment || course.getMandatory()) {
-					cplex.addLe(sumAllAssignedStudents, groupCapacity); // CONSTRAINT: sum of all assigned students <= group's capacity
+		if (isMandatoryAssignment) {
+			for (Course course : courses.values()) {
+				sumTargetNumStudentsAssigned += processCourse(course);
+			}
+		}
+		else {
+			for (Course course : courses.values()) {
+				if (!course.getMandatory()) {
+					processCourseOptional(course);
 				}
-				// Else (if we're assigning mandatory courses but this course is optional), don't add a constraint for the group capacity, since we know for sure everyone fits
-				
-				float groupMinCapacityUtilization = group.getMinCapacityUtilization();
-				float targetNumStudentsAssigned = groupMinCapacityUtilization * groupCapacity / sumGroupCapacities * numEnrolledStudents;
-				IloNumVar groupUtilizationSlack = cplex.numVar(0, targetNumStudentsAssigned);
-				
-				sumTargetNumStudentsAssignedToGroups += targetNumStudentsAssigned;
-				sumAllGroupUtilizationSlacks.addTerm(1, groupUtilizationSlack);
-				
-				// SOFT CONSTRAINT: try to balance students assigned to groups according to each group's target minimum utilization of the total group capacities for the same course
-				cplex.addGe(cplex.sum(sumAllAssignedStudents, groupUtilizationSlack), targetNumStudentsAssigned);
 			}
 		}
 		
@@ -126,7 +90,7 @@ public class AssignmentProblem {
 		IloNumExpr objMaximizeCompleteStudents = (sumAvgGrades != 0) ? cplex.prod(1. / sumAvgGrades, weightedSumAllCompleteStudents) : cplex.constant(1);
 		IloNumExpr objMaximizeOccupiedTimeslots = (targetNumOccupiedTimeslots != 0) ? cplex.prod(1. / targetNumOccupiedTimeslots, sumAllOccupiedTimeslots) : cplex.constant(1);
 		IloNumExpr objMaximizeFulfilledPreferences = (sumAvgGrades != 0) ? cplex.prod(1. / (sumAvgGrades * 10), weightedSumFulfilledPreferences) : cplex.constant(1);
-		IloNumExpr objMinimizeGroupUtilizationSlacks = (sumTargetNumStudentsAssignedToGroups != 0) ? cplex.sum(1, cplex.prod(-1. / sumTargetNumStudentsAssignedToGroups, sumAllGroupUtilizationSlacks)) : cplex.constant(1);
+		IloNumExpr objMinimizeGroupUtilizationSlacks = (sumTargetNumStudentsAssigned != 0) ? cplex.sum(1, cplex.prod(-1. / sumTargetNumStudentsAssigned, sumAllGroupUtilizationSlacks)) : cplex.constant(1);
 		
 		if (isMandatoryAssignment) {
 			cplex.addMaximize(cplex.sum(cplex.prod(.175, objMaximizeSumAllAssignments), cplex.prod(.175, objMaximizeCompleteStudents), cplex.prod(.175, objMaximizeOccupiedTimeslots), cplex.prod(.3, objMaximizeFulfilledPreferences),  cplex.prod(.175, objMinimizeGroupUtilizationSlacks)));
@@ -140,35 +104,59 @@ public class AssignmentProblem {
 		System.out.println("sumAvgGrades = " + sumAvgGrades);
 		System.out.println("targetNumOccupiedTimeslots = " + targetNumOccupiedTimeslots);
 		System.out.println("sumAvgGrades * 10 = " + sumAvgGrades * 10);
-		System.out.println("sumTargetNumStudentsAssignedToGroups = " + sumTargetNumStudentsAssignedToGroups);
+		System.out.println("sumTargetNumStudentsAssignedToGroups = " + sumTargetNumStudentsAssigned);
 		System.out.println();
 	}
 	
-	private IloLinearIntExpr processStudentAssignments(Student student) throws IloException {
+	private void processStudent(Student student) throws IloException {
+		float avgGrade = student.getAvgGrade();
+		IloLinearIntExpr sumAllAssignmentsPerStudent = processAssignmentsPerStudent(student); // Sum of all assignments for this student
+		
+		IloLinearIntExprIterator studentAssignmentsIterator = sumAllAssignmentsPerStudent.linearIterator();
+		while (studentAssignmentsIterator.hasNext()) { // Iterating over this student's assignment variables to add them to the objective function multiplied by their grade
+			IloIntVar studentAssignment = studentAssignmentsIterator.nextIntVar();
+			weightedSumAllAssignments.addTerm(avgGrade, studentAssignment);
+		}
+		
+		IloIntVar completeStudent = cplex.boolVar("(Complete assignment for " + student.getCode() + ")"); // VARIABLE: student was assigned to all of their courses?
+		cplex.add(cplex.ifThen(cplex.le(sumAllAssignmentsPerStudent, student.getEnrolledCourses().size() - 1), cplex.eq(completeStudent, 0))); // CONSTRAINT: if sum of all assignments < number of enrolled courses, then it's not a complete assignment
+		cplex.add(cplex.ifThen(cplex.eq(sumAllAssignmentsPerStudent, student.getEnrolledCourses().size()), cplex.eq(completeStudent, 1))); // CONSTRAINT: if sum of all assignments = number of enrolled courses, then it is a complete assignment
+		
+		weightedSumAllCompleteStudents.addTerm(avgGrade, completeStudent);
+		student.setHasCompleteAssignment(completeStudent); // Set this student's complete status variable
+		
+		for (StudentPreference preference : student.getPreferences()) {
+			processStudentPreferences(student, preference, sumAllAssignmentsPerStudent);
+		}
+		
+		for (Timeslot timeslot : schedule) {
+			processStudentTimeslots(student, timeslot);
+		}
+	}
+	
+	private IloLinearIntExpr processAssignmentsPerStudent(Student student) throws IloException {
 		IloLinearIntExpr sumAllAssignmentsPerStudent = cplex.linearIntExpr();
 		
 		for (Course course : student.getEnrolledCourses()) {
 			targetNumOccupiedTimeslots += course.getWeeklyTimeslots();
 			
-			IloLinearIntExpr sumAllAssignmentsPerStudentPerCourse = processStudentAssignmentsPerCourse(student, course); // Sum of all assignments for this student and this course
+			IloLinearIntExpr sumAllAssignmentsPerStudentPerCourse = processAssignmentsPerStudentPerCourse(student, course); // Sum of all assignments for this student and this course
 			sumAllAssignmentsPerStudent.add(sumAllAssignmentsPerStudentPerCourse);
 		}
 		
 		return sumAllAssignmentsPerStudent;
 	}
 	
-	private IloLinearIntExpr processStudentAssignmentsPerCourse(Student student, Course course) throws IloException {
+	private IloLinearIntExpr processAssignmentsPerStudentPerCourse(Student student, Course course) throws IloException {
 		IloLinearIntExpr sumAllAssignmentsPerStudentPerCourse = cplex.linearIntExpr();
 		
 		Map<Group, IloIntVar> groupAssignments = new HashMap<>();
 		
 		for (Group group : course.getGroups().values()) {
-			IloIntVar studentAssigned = cplex.boolVar("(" + student.getCode() + ": " + course.getCode() + "-" + group.getCode() + ")"); // VARIABLE: student assigned to this course-group pair?
-			sumAllAssignmentsPerStudentPerCourse.addTerm(1, studentAssigned);
+			IloIntVar studentGroupAssignment = processAssignmentsPerStudentPerCoursePerGroup(student, course, group);
+			sumAllAssignmentsPerStudentPerCourse.addTerm(1, studentGroupAssignment);
 			
-			group.addTermToSumAllAssignedStudents(cplex, studentAssigned);
-			
-			groupAssignments.put(group, studentAssigned);
+			groupAssignments.put(group, studentGroupAssignment);
 		}
 		
 		cplex.addLe(sumAllAssignmentsPerStudentPerCourse, 1); // CONSTRAINT: a student can be assigned to at most 1 group per course
@@ -176,6 +164,14 @@ public class AssignmentProblem {
 		student.getCourseGroupAssignments().put(course, groupAssignments);
 		
 		return sumAllAssignmentsPerStudentPerCourse;
+	}
+	
+	private IloIntVar processAssignmentsPerStudentPerCoursePerGroup(Student student, Course course, Group group) throws IloException {
+		IloIntVar studentGroupAssignment = cplex.boolVar("(" + student.getCode() + ": " + course.getCode() + "-" + group.getCode() + ")"); // VARIABLE: student assigned to this course-group pair?
+		
+		group.addTermToSumAllAssignedStudents(cplex, studentGroupAssignment);
+		
+		return studentGroupAssignment;
 	}
 	
 	private void processStudentPreferences(Student student, StudentPreference preference, IloLinearIntExpr sumAllAssignmentsPerStudent) throws IloException {
@@ -247,6 +243,64 @@ public class AssignmentProblem {
 		
 		cplex.add(cplex.ifThen(cplex.eq(sumAllClasses, 0), cplex.eq(timeslotOccupied, 0))); // CONSTRAINT: if sum of all classes in this timeslot = 0, the timeslot isn't occupied
 		cplex.add(cplex.ifThen(cplex.not(cplex.eq(sumAllClasses, 0)), cplex.eq(timeslotOccupied, 1))); // CONSTRAINT: if sum of all classes in this timeslot != 0, the timeslot is occupied
+	}
+	
+	private float processCourse(Course course) throws IloException {
+		int numStudentsEnrolledThisCourse = course.getNumEnrollments();
+		int sumGroupCapacitiesThisCourse = course.calculateSumGroupCapacities();
+		
+		float targetNumStudentsAssignedToCourse = 0;
+		
+		for (Group group : course.getGroups().values()) {
+			targetNumStudentsAssignedToCourse += processCourseGroup(course, group, numStudentsEnrolledThisCourse, sumGroupCapacitiesThisCourse);
+		}
+		
+		return targetNumStudentsAssignedToCourse;
+	}
+	
+	private float processCourseGroup(Course course, Group group, int numStudentsEnrolledThisCourse, int sumGroupCapacitiesThisCourse) throws IloException {
+		IloLinearIntExpr sumAllAssignedStudents = group.getSumAllAssignedStudents();
+		int groupCapacity = group.getCapacity();
+		
+		if (sumAllAssignedStudents == null) return 0; // Some courses might not have enrolled students
+		
+		if (!isMandatoryAssignment || course.getMandatory()) {
+			cplex.addLe(sumAllAssignedStudents, groupCapacity); // CONSTRAINT: sum of all assigned students <= group's capacity
+		}
+		// Else (if we're assigning mandatory courses but this course is optional), don't add a constraint for the group capacity, since we know for sure everyone fits
+		
+		float groupMinUtilization = group.getMinUtilization();
+		float targetNumStudentsAssigned = groupMinUtilization * groupCapacity / sumGroupCapacitiesThisCourse * numStudentsEnrolledThisCourse;
+		
+		IloNumVar groupUtilizationSlack = cplex.numVar(0, targetNumStudentsAssigned);
+		sumAllGroupUtilizationSlacks.addTerm(1, groupUtilizationSlack);
+		
+		// SOFT CONSTRAINT: try to balance students assigned to groups according to each group's target minimum utilization of the total group capacities for the same course
+		cplex.addGe(cplex.sum(sumAllAssignedStudents, groupUtilizationSlack), targetNumStudentsAssigned);
+		
+		//		// CONSTRAINT: balance students assigned to groups according to each group's target minimum utilization of the total group capacities for the same course
+		//		cplex.addGe(sumAllAssignedStudents, targetNumStudentsAssigned);
+		
+		return targetNumStudentsAssigned;
+	}
+	
+	private void processCourseOptional(Course course) throws IloException {
+		for (Group group : course.getGroups().values()) {
+			processCourseGroupOptional(course, group);
+		}
+	}
+	
+	private void processCourseGroupOptional(Course course, Group group) throws IloException {
+		IloLinearIntExpr sumAllAssignedStudents = group.getSumAllAssignedStudents();
+		int groupCapacity = group.getCapacity();
+		
+		if (sumAllAssignedStudents == null) return; // Some courses might not have enrolled students
+		
+		cplex.addLe(sumAllAssignedStudents, groupCapacity); // CONSTRAINT: sum of all assigned students <= group's capacity
+		
+		float groupMinUtilization = .1f;
+		
+		cplex.addGe(sumAllAssignedStudents, groupMinUtilization * groupCapacity);
 	}
 	
 	private void solve() throws IOException, IloException {

@@ -8,13 +8,13 @@ import ilog.cplex.IloCplex;
 public class Group {
 	private String code;
 	private int capacity;
-	private float minCapacityUtilization; // Minimum percentage of students assigned to this group, relative to the total capacities of all groups in this course
+	private float minUtilization; // Minimum percentage of students assigned to this group, relative to the theoretical number of students who should be assigned to it
 	private IloLinearIntExpr sumAllAssignedStudents; // Sum of all decision variables indicating whether a student has been assigned to this group
 	
 	public Group(String code, int capacity, float minUtilization) {
 		this.code = code;
 		this.capacity = capacity;
-		this.minCapacityUtilization = minUtilization;
+		this.minUtilization = minUtilization;
 	}
 	
 	public String getCode() {
@@ -29,8 +29,8 @@ public class Group {
 		this.capacity = capacity;
 	}
 	
-	public float getMinCapacityUtilization() {
-		return minCapacityUtilization;
+	public float getMinUtilization() {
+		return minUtilization;
 	}
 	
 	public IloLinearIntExpr getSumAllAssignedStudents() {
