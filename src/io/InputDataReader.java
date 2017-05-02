@@ -90,7 +90,7 @@ public class InputDataReader {
 			String groupCode = line[1];
 			int groupCapacity = Integer.parseInt(line[2]);
 			
-			Group thisGroup = new Group(groupCode, groupCapacity, .9f);
+			Group thisGroup = new Group(groupCode, groupCapacity, 1f);
 			courses.get(courseCode).getGroups().put(groupCode, thisGroup);
 		}
 		

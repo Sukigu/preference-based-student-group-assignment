@@ -108,7 +108,7 @@ public class AssignmentProblem {
 		IloNumExpr objMinimizeGroupUtilizationSlacks = (sumTargetNumStudentsAssigned != 0) ? cplex.sum(1, cplex.prod(-1. / sumTargetNumStudentsAssigned, sumAllGroupUtilizationSlacks)) : cplex.constant(1);
 		
 		if (isMandatoryAssignment) {
-			cplex.addMaximize(cplex.sum(cplex.prod(.175, objMaximizeSumAllAssignments), cplex.prod(.175, objMaximizeCompleteStudents), cplex.prod(.175, objMaximizeOccupiedTimeslots), cplex.prod(.3, objMaximizeFulfilledPreferences),  cplex.prod(.175, objMinimizeGroupUtilizationSlacks)));
+			cplex.addMaximize(cplex.sum(cplex.prod(.3, objMaximizeSumAllAssignments), cplex.prod(.16667, objMaximizeCompleteStudents), cplex.prod(.16667, objMaximizeOccupiedTimeslots), cplex.prod(.16667, objMaximizeFulfilledPreferences),  cplex.prod(.2, objMinimizeGroupUtilizationSlacks)));
 		}
 		else {
 			cplex.addMaximize(objMaximizeFulfilledPreferences);
