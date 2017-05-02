@@ -23,10 +23,13 @@ import model.StudentPreference;
 import model.Timeslot;
 
 public class AssignmentProblem {
+	public enum PreferenceWeightingMode {TIMES, EXPONENT};
+	
 	private Map<String, Course> courses;
 	private Schedule schedule;
 	private Map<String, Student> students;
 	private boolean isMandatoryAssignment;
+	private PreferenceWeightingMode preferenceWeightingMode;
 	private IloCplex cplex;
 	private OutputDataWriter writer;
 	
@@ -34,7 +37,7 @@ public class AssignmentProblem {
 	private IloLinearNumExpr weightedSumAllAssignments, weightedSumAllCompleteStudents, weightedSumFulfilledPreferences, sumAllGroupUtilizationSlacks;
 	private IloLinearIntExpr sumAllOccupiedTimeslots;
 	
-	public AssignmentProblem(String coursesFilename, String groupsFilename, String scheduleFilename, String groupCompositesFilename, String preferencesFilename, String gradesFilename, int semester, String procVersion, boolean isMandatoryAssignment, String outputPath) throws IloException, IOException {
+	public AssignmentProblem(String coursesFilename, String groupsFilename, String scheduleFilename, String groupCompositesFilename, String preferencesFilename, String gradesFilename, int semester, String procVersion, boolean isMandatoryAssignment, PreferenceWeightingMode preferenceWeightingMode, String outputPath) throws IloException, IOException {
 		InputDataReader reader = new InputDataReader(coursesFilename, groupsFilename, scheduleFilename, groupCompositesFilename, preferencesFilename, gradesFilename, semester, procVersion);
 		reader.readData();
 		
@@ -42,6 +45,7 @@ public class AssignmentProblem {
 		this.schedule = reader.getSchedule();
 		this.students = reader.getStudents();
 		this.isMandatoryAssignment = isMandatoryAssignment;
+		this.preferenceWeightingMode = preferenceWeightingMode;
 		this.cplex = new IloCplex();
 		this.writer = new OutputDataWriter(cplex, cplex.getParam(IloCplex.DoubleParam.EpRHS), courses, students, outputPath);
 		
@@ -63,12 +67,17 @@ public class AssignmentProblem {
 		
 		float sumEnrollmentsTimesAvgGrade = 0; // Summation of each student's number of course enrollments multiplied by their grade
 		float sumAvgGrades = 0; // Sum of every student's grade
+		float sumAvgPow = 0; // Sum of 2^(every student's grade) * 10
 		
 		for (Student student : students.values()) {
 			processStudent(student);
 			
 			sumEnrollmentsTimesAvgGrade += student.getEnrolledCourses().size() * student.getAvgGrade();
 			sumAvgGrades += student.getAvgGrade();
+			
+			if (preferenceWeightingMode == PreferenceWeightingMode.EXPONENT) {
+				sumAvgPow += Math.pow(2, student.getAvgGrade()) * 10;
+			}
 		}
 		
 		float sumTargetNumStudentsAssigned = 0;
@@ -89,7 +98,13 @@ public class AssignmentProblem {
 		IloNumExpr objMaximizeSumAllAssignments = (sumEnrollmentsTimesAvgGrade != 0) ? cplex.prod(1. / sumEnrollmentsTimesAvgGrade, weightedSumAllAssignments) : cplex.constant(1);
 		IloNumExpr objMaximizeCompleteStudents = (sumAvgGrades != 0) ? cplex.prod(1. / sumAvgGrades, weightedSumAllCompleteStudents) : cplex.constant(1);
 		IloNumExpr objMaximizeOccupiedTimeslots = (targetNumOccupiedTimeslots != 0) ? cplex.prod(1. / targetNumOccupiedTimeslots, sumAllOccupiedTimeslots) : cplex.constant(1);
-		IloNumExpr objMaximizeFulfilledPreferences = (sumAvgGrades != 0) ? cplex.prod(1. / (sumAvgGrades * 10), weightedSumFulfilledPreferences) : cplex.constant(1);
+		IloNumExpr objMaximizeFulfilledPreferences = null;
+		if (preferenceWeightingMode == PreferenceWeightingMode.EXPONENT) {
+			objMaximizeFulfilledPreferences = (sumAvgPow != 0) ? cplex.prod(1. / sumAvgPow, weightedSumFulfilledPreferences) : cplex.constant(1);
+		}
+		else if (preferenceWeightingMode == PreferenceWeightingMode.TIMES) {
+			objMaximizeFulfilledPreferences = (sumAvgGrades != 0) ? cplex.prod(1. / (sumAvgGrades * 10), weightedSumFulfilledPreferences) : cplex.constant(1);
+		}
 		IloNumExpr objMinimizeGroupUtilizationSlacks = (sumTargetNumStudentsAssigned != 0) ? cplex.sum(1, cplex.prod(-1. / sumTargetNumStudentsAssigned, sumAllGroupUtilizationSlacks)) : cplex.constant(1);
 		
 		if (isMandatoryAssignment) {
@@ -103,7 +118,12 @@ public class AssignmentProblem {
 		System.out.println("sumEnrollmentsTimesAvgGrade = " + sumEnrollmentsTimesAvgGrade);
 		System.out.println("sumAvgGrades = " + sumAvgGrades);
 		System.out.println("targetNumOccupiedTimeslots = " + targetNumOccupiedTimeslots);
-		System.out.println("sumAvgGrades * 10 = " + sumAvgGrades * 10);
+		if (preferenceWeightingMode == PreferenceWeightingMode.EXPONENT) {
+			System.out.println("sumAvgPow = " + sumAvgPow);
+		}
+		else if (preferenceWeightingMode == PreferenceWeightingMode.TIMES) {
+			System.out.println("sumAvgGrades * 10 = " + sumAvgGrades * 10);
+		}
 		System.out.println("sumTargetNumStudentsAssignedToGroups = " + sumTargetNumStudentsAssigned);
 		System.out.println();
 	}
@@ -189,8 +209,13 @@ public class AssignmentProblem {
 		
 		IloIntVar fulfilledPreference = cplex.boolVar("(Complete preference order " + preferenceOrder + " for " + student.getCode() + ")");
 		preference.setWasFulfilled(fulfilledPreference);
-		/*weightedSumFulfilledPreferences.addTerm(student.getAvgGrade() - (preferenceOrder - 1) / 9., fulfilledPreference);*/
-		weightedSumFulfilledPreferences.addTerm(student.getAvgGrade() * (10 - (preferenceOrder - 1)), fulfilledPreference);
+		
+		if (preferenceWeightingMode == PreferenceWeightingMode.EXPONENT) {
+			weightedSumFulfilledPreferences.addTerm(Math.pow(2, student.getAvgGrade()) * (10 - (preferenceOrder - 1)), fulfilledPreference);
+		}
+		else if (preferenceWeightingMode == PreferenceWeightingMode.TIMES) {
+			weightedSumFulfilledPreferences.addTerm(student.getAvgGrade() * (10 - (preferenceOrder - 1)), fulfilledPreference);
+		}
 		
 		// CONSTRAINT: if sum of all assignments in this preference < number of course-group pairs in it
 		// or sum of all assignments in this preference < sum of the student's total assignments,
