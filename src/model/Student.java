@@ -18,13 +18,16 @@ public class Student {
 	
 	private Map<Course, Map<Group, IloIntVar>> courseGroupAssignments; // Course code -> (group code -> (boolean variable indicating assignment))
 	private IloIntVar hasCompleteAssignment; // Boolean variable indicating if this student was assigned to all courses they enrolled in
+	private List<IloIntVar> occupiedPeriods; // Boolean variables indicating if this student was assigned to classes in each time period (mornings/afternoons)
 	
-	public Student(String code) {
+	public Student(String code, String name) {
 		this.code = code;
+		this.name = name;
 		this.avgGrade = -1;
 		this.preferences = new ArrayList<>();
 		this.enrolledCourses = new HashSet<>();
 		this.courseGroupAssignments = new HashMap<>();
+		this.occupiedPeriods = new ArrayList<>();
 	}
 	
 	public String getCode() {
@@ -69,6 +72,10 @@ public class Student {
 	
 	public void setHasCompleteAssignment(IloIntVar hasCompleteAssignment) {
 		this.hasCompleteAssignment = hasCompleteAssignment;
+	}
+	
+	public List<IloIntVar> getOccupiedPeriods() {
+		return occupiedPeriods;
 	}
 	
 	@Override

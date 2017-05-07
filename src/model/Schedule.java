@@ -17,7 +17,16 @@ public class Schedule implements Iterable<Timeslot> {
 			List<Timeslot> dayList = new ArrayList<>();
 			
 			for (int timeslot = 0; timeslot < 25; ++timeslot) {
-				dayList.add(new Timeslot());
+				int period; // Which period this timeslot belongs to (0 -> Monday morning, ..., 11 -> Saturday afternoon)
+				
+				if (timeslot == 10 || timeslot == 11) {
+					period = -1; // Timeslots at 1:00-1:30pm and 1:30-2:00pm aren't counted as either morning or afternoon 
+				}
+				else {
+					period = day * 2 + (timeslot <= 10 ? 0 : 1);
+				}
+				
+				dayList.add(new Timeslot(period));
 			}
 			
 			schedule.add(dayList);

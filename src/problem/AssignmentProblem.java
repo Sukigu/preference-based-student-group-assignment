@@ -82,16 +82,12 @@ public class AssignmentProblem {
 		
 		float sumTargetNumStudentsAssigned = 0;
 		
-		if (isMandatoryAssignment) {
-			for (Course course : courses.values()) {
-				sumTargetNumStudentsAssigned += processCourse(course);
+		for (Course course : courses.values()) {
+			if (isMandatoryAssignment) {
+				sumTargetNumStudentsAssigned += processCourseMandatory(course);
 			}
-		}
-		else {
-			for (Course course : courses.values()) {
-				if (!course.getMandatory()) {
-					processCourseOptional(course);
-				}
+			else if (!course.getMandatory()) {
+				processCourseOptional(course);
 			}
 		}
 		
@@ -146,11 +142,20 @@ public class AssignmentProblem {
 		student.setHasCompleteAssignment(completeStudent); // Set this student's complete status variable
 		
 		for (StudentPreference preference : student.getPreferences()) {
-			processStudentPreferences(student, preference, sumAllAssignmentsPerStudent);
+			processStudentPreference(student, preference, sumAllAssignmentsPerStudent);
 		}
 		
+		// Process the student's timeslots and occupied time periods
+		
+		for (int i = 0; i < 12; ++i) {
+			student.getOccupiedPeriods().add(cplex.boolVar());
+		}
+		
+		int currentPeriod = -2;
+		IloLinearIntExpr currentSumOccupiedTimeslots = null;
+		
 		for (Timeslot timeslot : schedule) {
-			processStudentTimeslots(student, timeslot);
+			processStudentTimeslot(student, timeslot, currentPeriod, currentSumOccupiedTimeslots);
 		}
 	}
 	
@@ -194,7 +199,7 @@ public class AssignmentProblem {
 		return studentGroupAssignment;
 	}
 	
-	private void processStudentPreferences(Student student, StudentPreference preference, IloLinearIntExpr sumAllAssignmentsPerStudent) throws IloException {
+	private void processStudentPreference(Student student, StudentPreference preference, IloLinearIntExpr sumAllAssignmentsPerStudent) throws IloException {
 		int preferenceOrder = preference.getOrder();
 		int preferenceSize = preference.getSize();
 		IloLinearIntExpr sumIndividualGroupAssignments = cplex.linearIntExpr();
@@ -234,7 +239,7 @@ public class AssignmentProblem {
 				cplex.eq(fulfilledPreference, 1)));*/
 	}
 	
-	private void processStudentTimeslots(Student student, Timeslot timeslot) throws IloException {
+	private void processStudentTimeslot(Student student, Timeslot timeslot, int currentPeriod, IloLinearIntExpr currentSumOccupiedTimeslots) throws IloException {
 		IloIntVar timeslotOccupied = cplex.boolVar(); // VARIABLE: student has this timeslot occupied?
 		IloLinearIntExpr sumAllPracticalClasses = cplex.linearIntExpr(); // Sum of all practical classes for this student in this timeslot
 		IloLinearIntExpr sumAllClasses = cplex.linearIntExpr(); // Sum of all classes for this student in this timeslot
@@ -268,22 +273,46 @@ public class AssignmentProblem {
 		
 		cplex.add(cplex.ifThen(cplex.eq(sumAllClasses, 0), cplex.eq(timeslotOccupied, 0))); // CONSTRAINT: if sum of all classes in this timeslot = 0, the timeslot isn't occupied
 		cplex.add(cplex.ifThen(cplex.not(cplex.eq(sumAllClasses, 0)), cplex.eq(timeslotOccupied, 1))); // CONSTRAINT: if sum of all classes in this timeslot != 0, the timeslot is occupied
+		
+		// Adding this timeslot to the calculation of this student's occupied timeslots...
+		
+		int timeslotPeriod = timeslot.getPeriod();
+		
+		if (timeslotPeriod != -1) return; // Don't do anything with timeslots at 1:00-1:30pm and 1:30-2:00pm
+		
+		if (timeslotPeriod != currentPeriod) { // If this is a new period...
+			if (currentSumOccupiedTimeslots != null) {
+				IloIntVar occupiedPeriod = student.getOccupiedPeriods().get(timeslotPeriod);
+				student.getOccupiedPeriods().add(occupiedPeriod);
+				
+				// CONSTRAINT: if the sum of all occupied timeslots in this period = 0, then the period is not occupied
+				cplex.add(cplex.ifThen(cplex.eq(currentSumOccupiedTimeslots, 0), cplex.eq(occupiedPeriod, 0)));
+				
+				// CONSTRAINT: if the sum of all occupied timeslots in this period >= 1, then the period is occupied
+				cplex.add(cplex.ifThen(cplex.ge(currentSumOccupiedTimeslots, 1), cplex.eq(occupiedPeriod, 1)));
+			}
+			
+			currentPeriod = timeslotPeriod;
+			currentSumOccupiedTimeslots = cplex.linearIntExpr();
+		}
+		
+		currentSumOccupiedTimeslots.addTerm(1, timeslotOccupied);
 	}
 	
-	private float processCourse(Course course) throws IloException {
+	private float processCourseMandatory(Course course) throws IloException {
 		int numStudentsEnrolledThisCourse = course.getNumEnrollments();
 		int sumGroupCapacitiesThisCourse = course.calculateSumGroupCapacities();
 		
 		float targetNumStudentsAssignedToCourse = 0;
 		
 		for (Group group : course.getGroups().values()) {
-			targetNumStudentsAssignedToCourse += processCourseGroup(course, group, numStudentsEnrolledThisCourse, sumGroupCapacitiesThisCourse);
+			targetNumStudentsAssignedToCourse += processCourseGroupMandatory(course, group, numStudentsEnrolledThisCourse, sumGroupCapacitiesThisCourse);
 		}
 		
 		return targetNumStudentsAssignedToCourse;
 	}
 	
-	private float processCourseGroup(Course course, Group group, int numStudentsEnrolledThisCourse, int sumGroupCapacitiesThisCourse) throws IloException {
+	private float processCourseGroupMandatory(Course course, Group group, int numStudentsEnrolledThisCourse, int sumGroupCapacitiesThisCourse) throws IloException {
 		IloLinearIntExpr sumAllAssignedStudents = group.getSumAllAssignedStudents();
 		int groupCapacity = group.getCapacity();
 		

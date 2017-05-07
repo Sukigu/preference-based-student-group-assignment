@@ -17,7 +17,7 @@ public class Main {
 //			s1v1.run();
 			
 //			String s1v4OutputPath = "res" + File.separator + "output" + File.separator + "s1v4" + File.separator;
-//			AssignmentProblem s1v4 = new AssignmentProblem(coursesFilename, s1InputPath + "turmas.csv", s1InputPath + "compostos.csv", s1InputPath + "escolhas.csv", s1InputPath + "médias.csv", 1, "4", true, s1v4OutputPath);
+//			AssignmentProblem s1v4 = new AssignmentProblem(coursesFilename, s1InputPath + "turmas.csv", s1InputPath + "horário.csv", s1InputPath + "compostos.csv", s1InputPath + "escolhas.csv", s1InputPath + "médias.csv", 1, "4", true, AssignmentProblem.PreferenceWeightingMode.EXPONENT, s1v4OutputPath);
 //			s1v4.run();
 			
 			String s2InputPath = "res" + File.separator + "input" + File.separator + "s2" + File.separator;

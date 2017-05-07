@@ -201,8 +201,7 @@ public class InputDataReader {
 			
 			Student thisStudent = students.get(studentCode);
 			if (thisStudent == null) { // If this is a new student, create them and add them to the students map
-				thisStudent = new Student(studentCode);
-				thisStudent.setName(studentName);
+				thisStudent = new Student(studentCode, studentName);
 				students.put(studentCode, thisStudent);
 			}
 			
