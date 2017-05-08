@@ -15,10 +15,10 @@ public class Student {
 	private float avgGrade;
 	private List<StudentPreference> preferences;
 	private Set<Course> enrolledCourses; // List of the mandatory courses this student enrolled in
+	private List<Boolean> wantedPeriods; // True if student selected period of index N in one of their preferences, false otherwise 
 	
 	private Map<Course, Map<Group, IloIntVar>> courseGroupAssignments; // Course code -> (group code -> (boolean variable indicating assignment))
 	private IloIntVar hasCompleteAssignment; // Boolean variable indicating if this student was assigned to all courses they enrolled in
-	private List<IloIntVar> occupiedPeriods; // Boolean variables indicating if this student was assigned to classes in each time period (mornings/afternoons)
 	
 	public Student(String code, String name) {
 		this.code = code;
@@ -26,8 +26,12 @@ public class Student {
 		this.avgGrade = -1;
 		this.preferences = new ArrayList<>();
 		this.enrolledCourses = new HashSet<>();
+		this.wantedPeriods = new ArrayList<>();
 		this.courseGroupAssignments = new HashMap<>();
-		this.occupiedPeriods = new ArrayList<>();
+		
+		for (int i = 0; i < 12; ++i) {
+			this.wantedPeriods.add(false);
+		}
 	}
 	
 	public String getCode() {
@@ -62,6 +66,16 @@ public class Student {
 		return enrolledCourses;
 	}
 	
+	public boolean getWantedPeriod(int period) {
+		return wantedPeriods.get(period);
+	}
+	
+	public void setWantedPeriodsTrue(Set<Integer> periods) {
+		for (int period : periods) {
+			wantedPeriods.set(period, true);
+		}
+	}
+	
 	public Map<Course, Map<Group, IloIntVar>> getCourseGroupAssignments() {
 		return courseGroupAssignments;
 	}
@@ -72,10 +86,6 @@ public class Student {
 	
 	public void setHasCompleteAssignment(IloIntVar hasCompleteAssignment) {
 		this.hasCompleteAssignment = hasCompleteAssignment;
-	}
-	
-	public List<IloIntVar> getOccupiedPeriods() {
-		return occupiedPeriods;
 	}
 	
 	@Override

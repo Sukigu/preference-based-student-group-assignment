@@ -1,5 +1,8 @@
 package model;
 
+import java.util.HashSet;
+import java.util.Set;
+
 import ilog.concert.IloException;
 import ilog.concert.IloIntVar;
 import ilog.concert.IloLinearIntExpr;
@@ -10,11 +13,13 @@ public class Group {
 	private int capacity;
 	private float minUtilization; // Minimum percentage of students assigned to this group, relative to the theoretical number of students who should be assigned to it
 	private IloLinearIntExpr sumAllAssignedStudents; // Sum of all decision variables indicating whether a student has been assigned to this group
+	private Set<Integer> occupiedPeriods;
 	
 	public Group(String code, int capacity, float minUtilization) {
 		this.code = code;
 		this.capacity = capacity;
 		this.minUtilization = minUtilization;
+		this.occupiedPeriods = new HashSet<>();
 	}
 	
 	public String getCode() {
@@ -40,6 +45,14 @@ public class Group {
 	public void addTermToSumAllAssignedStudents(IloCplex cplex, IloIntVar var_preferenceAssigned) throws IloException {
 		if (sumAllAssignedStudents == null) sumAllAssignedStudents = cplex.linearIntExpr();
 		sumAllAssignedStudents.addTerm(1, var_preferenceAssigned);
+	}
+	
+	public Set<Integer> getOccupiedPeriods() {
+		return occupiedPeriods;
+	}
+	
+	public void addOccupiedPeriod(int period) {
+		occupiedPeriods.add(period);
 	}
 	
 	@Override

@@ -39,7 +39,8 @@ public class Schedule implements Iterable<Timeslot> {
 	
 	public void addCourseGroup(Course course, Group group, boolean practicalClass, int weekDay, int startTime, int duration) {
 		for (int i = 0; i < duration; ++i) {
-			Timeslot timeslot = getTimeslot(weekDay, startTime + i);
+			int timeslotNo = startTime + i;
+			Timeslot timeslot = getTimeslot(weekDay, timeslotNo);
 			
 			Map<Course, Set<Group>> timeslotClasses = (practicalClass ? timeslot.getPracticalClasses() : timeslot.getLectureClasses());
 			
@@ -53,6 +54,10 @@ public class Schedule implements Iterable<Timeslot> {
 			}
 			else {
 				timeslot.addLectureClass(course, group);
+			}
+			
+			if (timeslotNo != 10 && timeslotNo != 11) {
+				group.addOccupiedPeriod(weekDay * 2 + (timeslotNo <= 10 ? 0 : 1)); // Tell the group that it occupies this period
 			}
 		}
 	}

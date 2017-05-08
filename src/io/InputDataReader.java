@@ -220,6 +220,7 @@ public class InputDataReader {
 			thisPreference.addCourseGroupPair(thisCourse, thisGroup);
 			
 			thisStudent.getEnrolledCourses().add(thisCourse); // Add it to the list of this student's enrollments
+			thisStudent.setWantedPeriodsTrue(thisGroup.getOccupiedPeriods());
 		}
 		
 		reader.close();
