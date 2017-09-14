@@ -23,7 +23,7 @@ public class Main {
 			String s2InputPath = "res" + File.separator + "input" + File.separator + "s2" + File.separator;
 			
 //			String s2v2OutputPath = "res" + File.separator + "output" + File.separator + "s2v2" + File.separator;
-//			AssignmentProblem s2v2 = new AssignmentProblem(coursesFilename, s2InputPath + "turmas.csv", s2InputPath + "horário.csv", s2InputPath + "compostos.csv", s2InputPath + "escolhas.csv", s2InputPath + "médias.csv", 2, "2", false, AssignmentProblem.PreferenceWeightingMode.TIMES, s2v2OutputPath);
+//			AssignmentProblem s2v2 = new AssignmentProblem(coursesFilename, s2InputPath + "turmas.csv", s2InputPath + "horário.csv", s2InputPath + "compostos.csv", s2InputPath + "escolhas.csv", s2InputPath + "médias.csv", 2, "2", false, AssignmentProblem.PreferenceWeightingMode.EXPONENT, s2v2OutputPath);
 //			s2v2.run();
 			
 			String s2v4OutputPath = "res" + File.separator + "output" + File.separator + "s2v4" + File.separator;
