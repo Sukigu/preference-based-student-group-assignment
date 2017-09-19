@@ -16,6 +16,7 @@ public class Student {
 	private List<StudentPreference> preferences;
 	private Set<Course> enrolledCourses; // List of the mandatory courses this student enrolled in
 	private List<Boolean> wantedPeriods; // True if student selected period of index N in one of their preferences, false otherwise 
+	private Map<Course, Set<Group>> wantedCourseGroups; // List of the course-group pairs this student selected over all their preferences
 	
 	private Map<Course, Map<Group, IloIntVar>> courseGroupAssignments; // Course code -> (group code -> (boolean variable indicating assignment))
 	private IloIntVar hasCompleteAssignment; // Boolean variable indicating if this student was assigned to all courses they enrolled in
@@ -27,6 +28,7 @@ public class Student {
 		this.preferences = new ArrayList<>();
 		this.enrolledCourses = new HashSet<>();
 		this.wantedPeriods = new ArrayList<>();
+		this.wantedCourseGroups = new HashMap<>();
 		this.courseGroupAssignments = new HashMap<>();
 		
 		for (int i = 0; i < 12; ++i) {
@@ -60,6 +62,16 @@ public class Student {
 	
 	public void setPreferences(List<StudentPreference> preferences) {
 		this.preferences = preferences;
+		
+		// Add all course-group pairs from all preferences to the set of wanted course-group pairs
+		for (StudentPreference preference : preferences) {
+			for (Course course : preference.getCourseGroupPairs().keySet()) {
+				Group group = preference.getCourseGroupPairs().get(course);
+				
+				wantedCourseGroups.putIfAbsent(course, new HashSet<>());
+				wantedCourseGroups.get(course).add(group);
+			}
+		}
 	}
 	
 	public Set<Course> getEnrolledCourses() {
@@ -73,6 +85,15 @@ public class Student {
 	public void setWantedPeriodsTrue(Set<Integer> periods) {
 		for (int period : periods) {
 			wantedPeriods.set(period, true);
+		}
+	}
+	
+	public boolean getWantedCourseGroup(Course course, Group group) {
+		try {
+			return wantedCourseGroups.get(course).contains(group);
+		}
+		catch (NullPointerException e) {
+			return false;
 		}
 	}
 	

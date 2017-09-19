@@ -36,7 +36,7 @@ public class AssignmentProblem {
 	
 	private int targetNumOccupiedTimeslots;
 	private IloLinearNumExpr weightedSumAllAssignments, weightedSumAllCompleteStudents, weightedSumFulfilledPreferences, sumAllGroupUtilizationSlacks;
-	private IloLinearIntExpr sumAllOccupiedTimeslots, sumAllOccupiedPeriodsWithNoPreferenceAssigned, sumAllUnwantedOccupiedPeriods;
+	private IloLinearIntExpr sumAllOccupiedTimeslots, sumAllOccupiedPeriodsWithNoPreferenceAssigned, sumAllUnwantedOccupiedPeriods, sumAllAssignmentsToUnwantedGroups;
 	
 	public AssignmentProblem(String coursesFilename, String groupsFilename, String scheduleFilename, String groupCompositesFilename, String preferencesFilename, String gradesFilename, int semester, String procVersion, boolean isMandatoryAssignment, PreferenceWeightingMode preferenceWeightingMode, String outputPath) throws IloException, IOException {
 		InputDataReader reader = new InputDataReader(coursesFilename, groupsFilename, scheduleFilename, groupCompositesFilename, preferencesFilename, gradesFilename, semester, procVersion);
@@ -67,20 +67,27 @@ public class AssignmentProblem {
 		sumAllGroupUtilizationSlacks = cplex.linearNumExpr(); // Sum of all group utilization slack variables for the group balance soft constraint
 		sumAllOccupiedPeriodsWithNoPreferenceAssigned = cplex.linearIntExpr(); // Sum of all periods occupied individually by all students who weren't assigned to one of their preferences
 		sumAllUnwantedOccupiedPeriods = cplex.linearIntExpr(); // Sum of all periods occupied individually by students who didn't choose them in one of their preferences
+		sumAllAssignmentsToUnwantedGroups = cplex.linearIntExpr(); // Sum of all assignments of students to course-group pairs they didn't include in one of their preferences
 		
 		float sumEnrollmentsTimesAvgGrade = 0; // Summation of each student's number of course enrollments multiplied by their grade
 		float sumAvgGrades = 0; // Sum of every student's grade
 		float sumAvgPow = 0; // Sum of 2^(every student's grade) * 10
+		int sumEnrollments = 0;
 		
 		for (Student student : students.values()) {
 			processStudent(student);
 			
-			sumEnrollmentsTimesAvgGrade += student.getEnrolledCourses().size() * student.getAvgGrade();
-			sumAvgGrades += student.getAvgGrade();
+			int studentEnrollments = student.getEnrolledCourses().size();
+			float studentAvgGrade = student.getAvgGrade();
+			
+			sumEnrollmentsTimesAvgGrade += studentEnrollments * studentAvgGrade;
+			sumAvgGrades += studentAvgGrade;
 			
 			if (preferenceWeightingMode == PreferenceWeightingMode.EXPONENT) {
 				sumAvgPow += Math.pow(2, student.getAvgGrade()) * 10;
 			}
+			
+			sumEnrollments += studentEnrollments;
 		}
 		
 		float sumTargetNumStudentsAssigned = 0;
@@ -107,9 +114,18 @@ public class AssignmentProblem {
 		IloNumExpr objMinimizeGroupUtilizationSlacks = (sumTargetNumStudentsAssigned != 0) ? cplex.sum(1, cplex.prod(-1. / sumTargetNumStudentsAssigned, sumAllGroupUtilizationSlacks)) : cplex.constant(1);
 		IloNumExpr objMinimizeOccupiedPeriodsWithNoPreferenceAssigned = cplex.sum(1, cplex.prod(-1. / (students.size() * 12), sumAllOccupiedPeriodsWithNoPreferenceAssigned));
 		IloNumExpr objMinimizeUnwantedOccupiedPeriods = cplex.sum(1, cplex.prod(-1. / (students.size() * 12), sumAllUnwantedOccupiedPeriods));
+		IloNumExpr objMinimizeAssignmentsToUnwantedGroups = cplex.sum(1, cplex.prod(-1. / sumEnrollments, sumAllAssignmentsToUnwantedGroups));
 		
 		if (isMandatoryAssignment) {
-			cplex.addMaximize(cplex.sum(cplex.prod(.3, objMaximizeSumAllAssignments), cplex.prod(.1, objMaximizeCompleteStudents), cplex.prod(.1, objMaximizeOccupiedTimeslots), cplex.prod(.1, objMaximizeFulfilledPreferences),  cplex.prod(.2, objMinimizeGroupUtilizationSlacks), cplex.prod(.1, objMinimizeOccupiedPeriodsWithNoPreferenceAssigned), cplex.prod(.1, objMinimizeUnwantedOccupiedPeriods)));
+			cplex.addMaximize(cplex.sum(
+					cplex.prod(.25, objMaximizeSumAllAssignments),
+					cplex.prod(.1, objMaximizeCompleteStudents),
+					cplex.prod(.1, objMaximizeOccupiedTimeslots),
+					cplex.prod(.1, objMaximizeFulfilledPreferences),
+					cplex.prod(.15, objMinimizeGroupUtilizationSlacks),
+					cplex.prod(.1, objMinimizeOccupiedPeriodsWithNoPreferenceAssigned),
+					cplex.prod(.1, objMinimizeUnwantedOccupiedPeriods),
+					cplex.prod(.1, objMinimizeAssignmentsToUnwantedGroups)));
 		}
 		else {
 			cplex.addMaximize(objMaximizeFulfilledPreferences);
@@ -127,6 +143,7 @@ public class AssignmentProblem {
 		}
 		System.out.println("students.size() * 12 = " + students.size() * 12);
 		System.out.println("students.size() * 12 = " + students.size() * 12);
+		System.out.println("sumEnrollments = " + sumEnrollments);
 		System.out.println();
 	}
 	
@@ -227,14 +244,26 @@ public class AssignmentProblem {
 	private IloLinearIntExpr processAssignmentsPerStudentPerCourse(Student student, Course course) throws IloException {
 		IloLinearIntExpr sumAllAssignmentsPerStudentPerCourse = cplex.linearIntExpr();
 		
+		IloIntVar assignedToUnwantedGroup = cplex.boolVar(); // 1 if student gets assigned to an unwanted group, 0 otherwise
+		IloLinearIntExpr assignmentsToUnwantedGroups = cplex.linearIntExpr(); // Sum of all assignment variables to unwanted groups
+		
 		Map<Group, IloIntVar> groupAssignments = new HashMap<>();
 		
 		for (Group group : course.getGroups().values()) {
 			IloIntVar studentGroupAssignment = processAssignmentsPerStudentPerCoursePerGroup(student, course, group);
 			sumAllAssignmentsPerStudentPerCourse.addTerm(1, studentGroupAssignment);
-			
 			groupAssignments.put(group, studentGroupAssignment);
+			
+			if (!student.getWantedCourseGroup(course, group)) { // If the student didn't want this group...
+				assignmentsToUnwantedGroups.addTerm(1, studentGroupAssignment);
+			}
 		}
+		
+		// Variable 'assignedToUnwantedGroup' is 1 if the student was assigned to an unwanted group, 0 otherwise
+		cplex.add(cplex.ifThen(cplex.ge(assignmentsToUnwantedGroups, 1), cplex.eq(assignedToUnwantedGroup, 1)));
+		cplex.add(cplex.ifThen(cplex.eq(assignmentsToUnwantedGroups, 0), cplex.eq(assignedToUnwantedGroup, 0)));
+		
+		sumAllAssignmentsToUnwantedGroups.addTerm(1, assignedToUnwantedGroup);
 		
 		cplex.addLe(sumAllAssignmentsPerStudentPerCourse, 1); // CONSTRAINT: a student can be assigned to at most 1 group per course
 		
@@ -406,6 +435,7 @@ public class AssignmentProblem {
 			System.out.println("sumAllGroupUtilizationSlacks = " + cplex.getValue(sumAllGroupUtilizationSlacks));
 			System.out.println("sumAllOccupiedPeriodsWithNoPreferenceAssigned = " + cplex.getValue(sumAllOccupiedPeriodsWithNoPreferenceAssigned));
 			System.out.println("sumAllUnwantedOccupiedPeriods = " + cplex.getValue(sumAllUnwantedOccupiedPeriods));
+			System.out.println("sumAllAssignmentsToUnwantedGroups = " + cplex.getValue(sumAllAssignmentsToUnwantedGroups));
 			
 			writer.writeOutputData();
 		}
