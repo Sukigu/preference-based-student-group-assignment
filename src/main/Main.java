@@ -27,7 +27,9 @@ public class Main {
 //			s2v2.run();
 			
 			String s2v4OutputPath = "res" + File.separator + "output" + File.separator + "s2v4" + File.separator;
-			AssignmentProblem s2v4 = new AssignmentProblem(coursesFilename, s2InputPath + "turmas.csv", s2InputPath + "horário.csv", s2InputPath + "compostos.csv", s2InputPath + "escolhas.csv", s2InputPath + "médias.csv", 2, "4", true, AssignmentProblem.PreferenceWeightingMode.EXPONENT, s2v4OutputPath);
+			AssignmentProblem s2v4 = new AssignmentProblem(coursesFilename, s2InputPath + "turmas.csv", s2InputPath + "horário.csv", s2InputPath + "compostos.csv",
+					s2InputPath + "escolhas.csv", s2InputPath + "médias.csv", 2, "4", true, AssignmentProblem.PreferenceWeightingMode.EXPONENT,
+					.25f, .1f, .1f, .1f, .15f, .1f, .1f, .1f, s2v4OutputPath);
 			s2v4.run();
 		} catch (IOException e) {
 			e.printStackTrace();

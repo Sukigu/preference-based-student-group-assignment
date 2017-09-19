@@ -2,52 +2,39 @@ package ui;
 
 import java.io.IOException;
 import java.io.OutputStream;
-
 import javax.swing.JTextArea;
-import javax.swing.SwingUtilities;
 
-/* *
- * 
- * Taken from https://stackoverflow.com/questions/9776465/how-to-visualize-console-java-in-jframe-jpanel
+/**
+ * An output stream that writes its output to a javax.swing.JTextArea
+ * control.
  *
+ * @author  Ranganath Kini
+ * @see      javax.swing.JTextArea
  */
-
 public class TextAreaOutputStream extends OutputStream {
-	private final JTextArea textArea;
-	private final StringBuilder sb = new StringBuilder();
-	private String title;
+	private JTextArea textControl;
 	
-	public TextAreaOutputStream(final JTextArea textArea, String title) {
-		this.textArea = textArea;
-		this.title = title;
-		sb.append(title + "> ");
+	/**
+	 * Creates a new instance of TextAreaOutputStream which writes
+	 * to the specified instance of javax.swing.JTextArea control.
+	 *
+	 * @param control   A reference to the javax.swing.JTextArea
+	 *                  control to which the output must be redirected
+	 *                  to.
+	 */
+	public TextAreaOutputStream( JTextArea control ) {
+		textControl = control;
 	}
 	
-	@Override
-	public void flush() {
-	}
-	
-	@Override
-	public void close() {
-	}
-	
-	@Override
-	public void write(int b) throws IOException {
-		if (b == '\r')
-			return;
-		
-		if (b == '\n') {
-			final String text = sb.toString() + "\n";
-			SwingUtilities.invokeLater(new Runnable() {
-				public void run() {
-					textArea.append(text);
-				}
-			});
-			sb.setLength(0);
-			sb.append(title + "> ");
-			return;
-		}
-		
-		sb.append((char) b);
-	}
+	/**
+	 * Writes the specified byte as a character to the
+	 * javax.swing.JTextArea.
+	 *
+	 * @param   b   The byte to be written as character to the
+	 *              JTextArea.
+	 */
+	public void write( int b ) throws IOException {
+		// append the data as characters to the JTextArea control
+		textControl.append( String.valueOf( ( char )b ) );
+	}  
 }

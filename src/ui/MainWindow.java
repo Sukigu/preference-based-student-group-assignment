@@ -6,7 +6,9 @@ import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
 import java.io.File;
 import java.io.IOException;
+import java.io.PrintStream;
 
+import javax.imageio.ImageIO;
 import javax.swing.ButtonGroup;
 import javax.swing.GroupLayout;
 import javax.swing.GroupLayout.Alignment;
@@ -15,6 +17,7 @@ import javax.swing.JFrame;
 import javax.swing.JLabel;
 import javax.swing.JPanel;
 import javax.swing.JRadioButton;
+import javax.swing.JScrollPane;
 import javax.swing.JTabbedPane;
 import javax.swing.JTextArea;
 import javax.swing.JTextField;
@@ -27,7 +30,7 @@ import net.miginfocom.swing.MigLayout;
 import problem.AssignmentProblem;
 
 public class MainWindow {
-	private JFrame frmAtribuioDeTurmas;
+	private JFrame frmGroupAssignment;
 	private JLabel lblGroupSchedules;
 	private JLabel lblGroupComposites;
 	private JLabel lblStudentPreferences;
@@ -67,6 +70,8 @@ public class MainWindow {
 	private JTextField txtObjMinimizeOccupiedPeriodsWithNoPreferenceAssigned;
 	private JLabel lblObjMinimizeUnwantedOccupiedPeriods;
 	private JTextField txtObjMinimizeUnwantedOccupiedPeriods;
+	private JLabel lblObjMinimizeAssignmentsToUnwantedGroups;
+	private JTextField txtObjMinimizeAssignmentsToUnwantedGroups;
 	private JLabel lblOutput;
 	private JTextField txtOutput;
 	private JButton btnOutput;
@@ -86,7 +91,7 @@ public class MainWindow {
 			public void run() {
 				try {
 					MainWindow window = new MainWindow();
-					window.frmAtribuioDeTurmas.setVisible(true);
+					window.frmGroupAssignment.setVisible(true);
 				} catch (Exception e) {
 					e.printStackTrace();
 				}
@@ -105,15 +110,15 @@ public class MainWindow {
 	 * Initialize the contents of the frame.
 	 */
 	private void initialize() {
-		frmAtribuioDeTurmas = new JFrame();
-		frmAtribuioDeTurmas.setTitle("Atribuição de turmas\r\n");
-		frmAtribuioDeTurmas.setResizable(false);
-		frmAtribuioDeTurmas.setBounds(100, 100, 450, 300);
-		frmAtribuioDeTurmas.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-		frmAtribuioDeTurmas.getContentPane().setLayout(new BorderLayout(0, 0));
+		frmGroupAssignment = new JFrame();
+		frmGroupAssignment.setTitle("Atribuição de turmas MIEIC");
+		frmGroupAssignment.setResizable(false);
+		frmGroupAssignment.setBounds(100, 100, 450, 300);
+		frmGroupAssignment.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+		frmGroupAssignment.getContentPane().setLayout(new BorderLayout(0, 0));
 		
 		tabbedPane = new JTabbedPane(JTabbedPane.TOP);
-		frmAtribuioDeTurmas.getContentPane().add(tabbedPane, BorderLayout.CENTER);
+		frmGroupAssignment.getContentPane().add(tabbedPane, BorderLayout.CENTER);
 		
 		panelGeneral = new JPanel();
 		tabbedPane.addTab("Geral", null, panelGeneral, null);
@@ -148,47 +153,47 @@ public class MainWindow {
 		
 		GroupLayout gl_panelGeneral = new GroupLayout(panelGeneral);
 		gl_panelGeneral.setHorizontalGroup(
-			gl_panelGeneral.createParallelGroup(Alignment.LEADING)
+				gl_panelGeneral.createParallelGroup(Alignment.LEADING)
 				.addGroup(gl_panelGeneral.createSequentialGroup()
-					.addContainerGap()
-					.addGroup(gl_panelGeneral.createParallelGroup(Alignment.LEADING)
-						.addGroup(gl_panelGeneral.createSequentialGroup()
-							.addComponent(lblSemester)
-							.addPreferredGap(ComponentPlacement.UNRELATED)
-							.addComponent(radioButton1stSemester)
-							.addPreferredGap(ComponentPlacement.UNRELATED)
-							.addComponent(radioButton2ndSemester))
-						.addGroup(gl_panelGeneral.createSequentialGroup()
-							.addComponent(lblProcVersion)
-							.addGap(10)
-							.addComponent(txtProcVersion, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE))
-						.addGroup(gl_panelGeneral.createSequentialGroup()
-							.addComponent(lblCourseTypes)
-							.addPreferredGap(ComponentPlacement.UNRELATED)
-							.addComponent(radioButtonOptionalCourses)
-							.addPreferredGap(ComponentPlacement.UNRELATED)
-							.addComponent(radioButtonMandatoryCourses)))
-					.addContainerGap(22, Short.MAX_VALUE))
-		);
+						.addContainerGap()
+						.addGroup(gl_panelGeneral.createParallelGroup(Alignment.LEADING)
+								.addGroup(gl_panelGeneral.createSequentialGroup()
+										.addComponent(lblSemester)
+										.addPreferredGap(ComponentPlacement.UNRELATED)
+										.addComponent(radioButton1stSemester)
+										.addPreferredGap(ComponentPlacement.UNRELATED)
+										.addComponent(radioButton2ndSemester))
+								.addGroup(gl_panelGeneral.createSequentialGroup()
+										.addComponent(lblProcVersion)
+										.addGap(10)
+										.addComponent(txtProcVersion, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE))
+								.addGroup(gl_panelGeneral.createSequentialGroup()
+										.addComponent(lblCourseTypes)
+										.addPreferredGap(ComponentPlacement.UNRELATED)
+										.addComponent(radioButtonOptionalCourses)
+										.addPreferredGap(ComponentPlacement.UNRELATED)
+										.addComponent(radioButtonMandatoryCourses)))
+						.addContainerGap(22, Short.MAX_VALUE))
+				);
 		gl_panelGeneral.setVerticalGroup(
-			gl_panelGeneral.createParallelGroup(Alignment.LEADING)
+				gl_panelGeneral.createParallelGroup(Alignment.LEADING)
 				.addGroup(gl_panelGeneral.createSequentialGroup()
-					.addContainerGap()
-					.addGroup(gl_panelGeneral.createParallelGroup(Alignment.BASELINE)
-						.addComponent(lblSemester)
-						.addComponent(radioButton1stSemester)
-						.addComponent(radioButton2ndSemester))
-					.addPreferredGap(ComponentPlacement.RELATED)
-					.addGroup(gl_panelGeneral.createParallelGroup(Alignment.BASELINE)
-						.addComponent(lblProcVersion)
-						.addComponent(txtProcVersion, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE))
-					.addPreferredGap(ComponentPlacement.RELATED)
-					.addGroup(gl_panelGeneral.createParallelGroup(Alignment.BASELINE)
-						.addComponent(lblCourseTypes)
-						.addComponent(radioButtonOptionalCourses)
-						.addComponent(radioButtonMandatoryCourses))
-					.addContainerGap(161, Short.MAX_VALUE))
-		);
+						.addContainerGap()
+						.addGroup(gl_panelGeneral.createParallelGroup(Alignment.BASELINE)
+								.addComponent(lblSemester)
+								.addComponent(radioButton1stSemester)
+								.addComponent(radioButton2ndSemester))
+						.addPreferredGap(ComponentPlacement.RELATED)
+						.addGroup(gl_panelGeneral.createParallelGroup(Alignment.BASELINE)
+								.addComponent(lblProcVersion)
+								.addComponent(txtProcVersion, GroupLayout.PREFERRED_SIZE, GroupLayout.DEFAULT_SIZE, GroupLayout.PREFERRED_SIZE))
+						.addPreferredGap(ComponentPlacement.RELATED)
+						.addGroup(gl_panelGeneral.createParallelGroup(Alignment.BASELINE)
+								.addComponent(lblCourseTypes)
+								.addComponent(radioButtonOptionalCourses)
+								.addComponent(radioButtonMandatoryCourses))
+						.addContainerGap(161, Short.MAX_VALUE))
+				);
 		panelGeneral.setLayout(gl_panelGeneral);
 		
 		JPanel panelFiles = new JPanel(new MigLayout("", "[][418.00,grow][]", "[][][][][][][]"));
@@ -197,7 +202,6 @@ public class MainWindow {
 		panelFiles.add(lblCourses, "cell 0 0,alignx trailing");
 		
 		txtCourses = new JTextField();
-		txtCourses.setEditable(false);
 		panelFiles.add(txtCourses, "cell 1 0,growx");
 		txtCourses.setColumns(10);
 		
@@ -209,7 +213,6 @@ public class MainWindow {
 		panelFiles.add(lblGroups, "cell 0 1,alignx trailing,aligny center");
 		
 		txtGroups = new JTextField();
-		txtGroups.setEditable(false);
 		panelFiles.add(txtGroups, "cell 1 1,growx");
 		txtGroups.setColumns(10);
 		
@@ -221,7 +224,6 @@ public class MainWindow {
 		panelFiles.add(lblGroupSchedules, "cell 0 2,alignx trailing");
 		
 		txtGroupSchedules = new JTextField();
-		txtGroupSchedules.setEditable(false);
 		panelFiles.add(txtGroupSchedules, "cell 1 2,growx");
 		txtGroupSchedules.setColumns(10);
 		
@@ -233,7 +235,6 @@ public class MainWindow {
 		panelFiles.add(lblGroupComposites, "cell 0 3,alignx trailing");
 		
 		txtGroupComposites = new JTextField();
-		txtGroupComposites.setEditable(false);
 		panelFiles.add(txtGroupComposites, "cell 1 3,growx");
 		txtGroupComposites.setColumns(10);
 		
@@ -245,7 +246,6 @@ public class MainWindow {
 		panelFiles.add(lblStudentPreferences, "cell 0 4,alignx trailing");
 		
 		txtStudentPreferences = new JTextField();
-		txtStudentPreferences.setEditable(false);
 		panelFiles.add(txtStudentPreferences, "cell 1 4,growx");
 		txtStudentPreferences.setColumns(10);
 		
@@ -257,21 +257,19 @@ public class MainWindow {
 		panelFiles.add(lblStudentGrades, "cell 0 5,alignx trailing");
 		
 		txtStudentGrades = new JTextField();
-		txtStudentGrades.setEditable(false);
 		panelFiles.add(txtStudentGrades, "cell 1 5,growx");
 		txtStudentGrades.setColumns(10);
 		
 		btnStudentGrades = new JButton("Procurar...");
 		panelFiles.add(btnStudentGrades, "cell 2 5");
 		btnStudentGrades.addActionListener(new CsvBrowseButtonListener(txtStudentGrades));
-
+		
 		tabbedPane.addTab("Ficheiros", panelFiles);
 		
 		lblOutput = new JLabel("Diretório de saída:");
 		panelFiles.add(lblOutput, "cell 0 6,alignx trailing");
 		
 		txtOutput = new JTextField();
-		txtOutput.setEditable(false);
 		panelFiles.add(txtOutput, "cell 1 6,growx");
 		txtOutput.setColumns(10);
 		
@@ -288,7 +286,7 @@ public class MainWindow {
 		
 		txtObjMaximizeSumAllAssignments = new JTextField();
 		txtObjMaximizeSumAllAssignments.setHorizontalAlignment(SwingConstants.CENTER);
-		txtObjMaximizeSumAllAssignments.setText("30");
+		txtObjMaximizeSumAllAssignments.setText("25");
 		panelObjectiveWeights.add(txtObjMaximizeSumAllAssignments, "flowx,cell 1 0,alignx leading");
 		txtObjMaximizeSumAllAssignments.setColumns(3);
 		
@@ -323,7 +321,7 @@ public class MainWindow {
 		panelObjectiveWeights.add(lblObjMinimizeGroupUtilizationSlacks, "cell 0 4,alignx trailing");
 		
 		txtObjMinimizeGroupUtilizationSlacks = new JTextField();
-		txtObjMinimizeGroupUtilizationSlacks.setText("20");
+		txtObjMinimizeGroupUtilizationSlacks.setText("15");
 		txtObjMinimizeGroupUtilizationSlacks.setHorizontalAlignment(SwingConstants.CENTER);
 		panelObjectiveWeights.add(txtObjMinimizeGroupUtilizationSlacks, "cell 1 4,alignx leading");
 		txtObjMinimizeGroupUtilizationSlacks.setColumns(3);
@@ -346,14 +344,26 @@ public class MainWindow {
 		panelObjectiveWeights.add(txtObjMinimizeUnwantedOccupiedPeriods, "cell 1 6,alignx leading");
 		txtObjMinimizeUnwantedOccupiedPeriods.setColumns(3);
 		
+		lblObjMinimizeAssignmentsToUnwantedGroups = new JLabel("objMinimizeAssignmentsToUnwantedGroups:");
+		panelObjectiveWeights.add(lblObjMinimizeAssignmentsToUnwantedGroups, "cell 0 7,alignx trailing");
+		
+		txtObjMinimizeAssignmentsToUnwantedGroups = new JTextField();
+		txtObjMinimizeAssignmentsToUnwantedGroups.setText("10");
+		txtObjMinimizeAssignmentsToUnwantedGroups.setHorizontalAlignment(SwingConstants.CENTER);
+		panelObjectiveWeights.add(txtObjMinimizeAssignmentsToUnwantedGroups, "cell 1 7,alignx leading");
+		txtObjMinimizeAssignmentsToUnwantedGroups.setColumns(3);
+		
 		panelOutput = new JPanel();
 		tabbedPane.addTab("Saída", null, panelOutput, null);
 		panelOutput.setLayout(new BorderLayout(0, 0));
 		
 		txtOutputArea = new JTextArea();
 		txtOutputArea.setEditable(false);
-		panelOutput.add(txtOutputArea);
-		//System.setOut(new PrintStream(new TextAreaOutputStream(txtOutputArea, "testesss")));
+		PrintStream outStream = new PrintStream(new TextAreaOutputStream(txtOutputArea));
+		System.setOut(outStream);
+		
+		JScrollPane outputScrollPane = new JScrollPane(txtOutputArea);
+		panelOutput.add(outputScrollPane);
 		
 		JButton btnNewButton = new JButton("Executar");
 		btnNewButton.addActionListener(new ActionListener() {
@@ -362,7 +372,13 @@ public class MainWindow {
 				boolean isMandatoryAssignment = radioButtonOptionalCourses.isSelected() ? false : true;
 				
 				try {
-					AssignmentProblem problem = new AssignmentProblem(txtCourses.getText(), txtGroups.getText(), txtGroupSchedules.getText(), txtGroupComposites.getText(), txtStudentPreferences.getText(), txtStudentGrades.getText(), semester, txtProcVersion.getText(), isMandatoryAssignment, AssignmentProblem.PreferenceWeightingMode.EXPONENT, txtOutput.getText() + File.separator);
+					AssignmentProblem problem = new AssignmentProblem(txtCourses.getText(), txtGroups.getText(), txtGroupSchedules.getText(), txtGroupComposites.getText(),
+							txtStudentPreferences.getText(), txtStudentGrades.getText(), semester, txtProcVersion.getText(), isMandatoryAssignment,
+							AssignmentProblem.PreferenceWeightingMode.EXPONENT, Float.parseFloat(txtObjMaximizeSumAllAssignments.getText()),
+							Float.parseFloat(txtObjMaximizeCompleteStudents.getText()), Float.parseFloat(txtObjMaximizeOccupiedTimeslots.getText()),
+							Float.parseFloat(txtObjMaximizeFulfilledPreferences.getText()), Float.parseFloat(txtObjMinimizeGroupUtilizationSlacks.getText()),
+							Float.parseFloat(txtObjMinimizeOccupiedPeriodsWithNoPreferenceAssigned.getText()), Float.parseFloat(txtObjMinimizeUnwantedOccupiedPeriods.getText()),
+							Float.parseFloat(txtObjMinimizeAssignmentsToUnwantedGroups.getText()), txtOutput.getText() + File.separator);
 					problem.run();
 				} catch (IOException e) {
 					e.printStackTrace();
@@ -371,6 +387,12 @@ public class MainWindow {
 				}
 			}
 		});
-		frmAtribuioDeTurmas.getContentPane().add(btnNewButton, BorderLayout.SOUTH);
+		frmGroupAssignment.getContentPane().add(btnNewButton, BorderLayout.SOUTH);
+		
+		try {
+			frmGroupAssignment.setIconImage(ImageIO.read(new File("res" + File.separator + "icon_feup.png")));
+		} catch (IOException e) {
+			e.printStackTrace();
+		}
 	}
 }

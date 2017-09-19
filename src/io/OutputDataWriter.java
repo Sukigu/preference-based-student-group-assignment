@@ -73,6 +73,7 @@ public class OutputDataWriter {
 	
 	private void writeToFile(String filename, String output) throws IOException {
 		BufferedWriter writer = new BufferedWriter(new OutputStreamWriter(new FileOutputStream(filename), "utf-8"));
+		writer.write("\ufeff"); // Adding BOM for compatibility with Excel
 		writer.write(output);
 		writer.close();
 	}

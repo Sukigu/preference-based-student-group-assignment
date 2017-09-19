@@ -31,6 +31,9 @@ public class AssignmentProblem {
 	private Map<String, Student> students;
 	private boolean isMandatoryAssignment;
 	private PreferenceWeightingMode preferenceWeightingMode;
+	private float weightMaximizeSumAllAssignments, weightMaximizeCompleteStudents, weightMaximizeOccupiedTimeslots, weightMaximizeFulfilledPreferences,
+	weightMinimizeGroupUtilizationSlacks, weightMinimizeOccupiedPeriodsWithNoPreferenceAssigned, weightMinimizeUnwantedOccupiedPeriods,
+	weightMinimizeAssignmentsToUnwantedGroups;
 	private IloCplex cplex;
 	private OutputDataWriter writer;
 	
@@ -38,7 +41,11 @@ public class AssignmentProblem {
 	private IloLinearNumExpr weightedSumAllAssignments, weightedSumAllCompleteStudents, weightedSumFulfilledPreferences, sumAllGroupUtilizationSlacks;
 	private IloLinearIntExpr sumAllOccupiedTimeslots, sumAllOccupiedPeriodsWithNoPreferenceAssigned, sumAllUnwantedOccupiedPeriods, sumAllAssignmentsToUnwantedGroups;
 	
-	public AssignmentProblem(String coursesFilename, String groupsFilename, String scheduleFilename, String groupCompositesFilename, String preferencesFilename, String gradesFilename, int semester, String procVersion, boolean isMandatoryAssignment, PreferenceWeightingMode preferenceWeightingMode, String outputPath) throws IloException, IOException {
+	public AssignmentProblem(String coursesFilename, String groupsFilename, String scheduleFilename, String groupCompositesFilename, String preferencesFilename,
+			String gradesFilename, int semester, String procVersion, boolean isMandatoryAssignment, PreferenceWeightingMode preferenceWeightingMode,
+			float weightMaximizeSumAllAssignments, float weightMaximizeCompleteStudents, float weightMaximizeOccupiedTimeslots, float weightMaximizeFulfilledPreferences,
+			float weightMinimizeGroupUtilizationSlacks, float weightMinimizeOccupiedPeriodsWithNoPreferenceAssigned, float weightMinimizeUnwantedOccupiedPeriods,
+			float weightMinimizeAssignmentsToUnwantedGroups, String outputPath) throws IloException, IOException {
 		InputDataReader reader = new InputDataReader(coursesFilename, groupsFilename, scheduleFilename, groupCompositesFilename, preferencesFilename, gradesFilename, semester, procVersion);
 		reader.readData();
 		
@@ -47,6 +54,14 @@ public class AssignmentProblem {
 		this.students = reader.getStudents();
 		this.isMandatoryAssignment = isMandatoryAssignment;
 		this.preferenceWeightingMode = preferenceWeightingMode;
+		this.weightMaximizeSumAllAssignments = weightMaximizeSumAllAssignments;
+		this.weightMaximizeCompleteStudents = weightMaximizeCompleteStudents;
+		this.weightMaximizeOccupiedTimeslots = weightMaximizeOccupiedTimeslots;
+		this.weightMaximizeFulfilledPreferences = weightMaximizeFulfilledPreferences;
+		this.weightMinimizeGroupUtilizationSlacks = weightMinimizeGroupUtilizationSlacks;
+		this.weightMinimizeOccupiedPeriodsWithNoPreferenceAssigned = weightMinimizeOccupiedPeriodsWithNoPreferenceAssigned;
+		this.weightMinimizeUnwantedOccupiedPeriods = weightMinimizeUnwantedOccupiedPeriods;
+		this.weightMinimizeAssignmentsToUnwantedGroups = weightMinimizeAssignmentsToUnwantedGroups;
 		this.cplex = new IloCplex();
 		this.writer = new OutputDataWriter(cplex, cplex.getParam(IloCplex.DoubleParam.EpRHS), courses, students, outputPath);
 		
@@ -118,14 +133,14 @@ public class AssignmentProblem {
 		
 		if (isMandatoryAssignment) {
 			cplex.addMaximize(cplex.sum(
-					cplex.prod(.25, objMaximizeSumAllAssignments),
-					cplex.prod(.1, objMaximizeCompleteStudents),
-					cplex.prod(.1, objMaximizeOccupiedTimeslots),
-					cplex.prod(.1, objMaximizeFulfilledPreferences),
-					cplex.prod(.15, objMinimizeGroupUtilizationSlacks),
-					cplex.prod(.1, objMinimizeOccupiedPeriodsWithNoPreferenceAssigned),
-					cplex.prod(.1, objMinimizeUnwantedOccupiedPeriods),
-					cplex.prod(.1, objMinimizeAssignmentsToUnwantedGroups)));
+					cplex.prod(weightMaximizeSumAllAssignments, objMaximizeSumAllAssignments),
+					cplex.prod(weightMaximizeCompleteStudents, objMaximizeCompleteStudents),
+					cplex.prod(weightMaximizeOccupiedTimeslots, objMaximizeOccupiedTimeslots),
+					cplex.prod(weightMaximizeFulfilledPreferences, objMaximizeFulfilledPreferences),
+					cplex.prod(weightMinimizeGroupUtilizationSlacks, objMinimizeGroupUtilizationSlacks),
+					cplex.prod(weightMinimizeOccupiedPeriodsWithNoPreferenceAssigned, objMinimizeOccupiedPeriodsWithNoPreferenceAssigned),
+					cplex.prod(weightMinimizeUnwantedOccupiedPeriods, objMinimizeUnwantedOccupiedPeriods),
+					cplex.prod(weightMinimizeAssignmentsToUnwantedGroups, objMinimizeAssignmentsToUnwantedGroups)));
 		}
 		else {
 			cplex.addMaximize(objMaximizeFulfilledPreferences);
